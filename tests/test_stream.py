@@ -20,6 +20,8 @@ def test_an_open_sequence_at_the_end_is_held_back(opener: str) -> None:
 def test_a_finished_sequence_at_the_end_is_not_held_back() -> None:
     text = "A\x1b]8;;https://b.test\x1b\\B\x1b]8;;\x1b\\"
     assert unfinished_tail(text) == len(text)
+    closed = "A\x1b]8;;\x07"
+    assert unfinished_tail(closed) == len(closed)
 
 
 def test_plain_text_and_other_escapes_are_not_held_back() -> None:
