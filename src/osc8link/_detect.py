@@ -59,7 +59,7 @@ def supports_hyperlinks(
 def _program(program: str, version: str, env: Mapping[str, str]) -> bool | None:
     major, minor, _ = _version(version)
     if program == "iTerm.app":
-        return minor >= 1 if major == 3 else major > 3
+        return major > 3 or (major == 3 and minor >= 1)
     if program == "WezTerm":
         nix = re.fullmatch(r"0-unstable-(\d{4}-\d{2}-\d{2})", version)
         if nix:
@@ -74,12 +74,12 @@ def _program(program: str, version: str, env: Mapping[str, str]) -> bool | None:
 
 
 def _version(text: str) -> tuple[int, int, int]:
-    """Read "3.1.0" as (3, 1, 0) and the dotless "4601" as (0, 46, 1); -1 when unreadable."""
+    """Read "3.1.0" as (3, 1, 0) and the dotless "4601" as (0, 46, 1); 0 when unreadable."""
     packed = re.fullmatch(r"(\d{1,2})(\d{2})", text)
     if packed:
         return 0, int(packed.group(1)), int(packed.group(2))
     parts = [_leading_int(part) for part in text.split(".")] + [None, None, None]
-    major, minor, patch = (-1 if part is None else part for part in parts[:3])
+    major, minor, patch = (0 if part is None else part for part in parts[:3])
     return major, minor, patch
 
 

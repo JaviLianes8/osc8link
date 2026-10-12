@@ -42,6 +42,7 @@ def check(env: dict[str, str], *, tty: bool = True, platform: str = "linux") -> 
         {"VTE_VERSION": "5001"},
         {"VTE_VERSION": "7600"},
         {"VTE_VERSION": "0.52.2"},
+        {"VTE_VERSION": "1.0.0"},
         {"TERM": "alacritty"},
         {"TERM": "xterm-kitty"},
         {"TERM": "foot"},

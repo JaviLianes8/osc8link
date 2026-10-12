@@ -6,11 +6,11 @@ Progress:
 - [x] Safe builder: URL percent-encoding, `id` validation, text injection guard, BEL option
 - [x] Spec parser: C0 and C1 forms, all terminators, link switching, params and `id`
 - [x] Terminal detection and graceful fallback
-- [ ] Typed API and contracts: pinned fixtures, README, typing, installed wheel
+- [x] Typed API and contracts: pinned fixtures, README, typing, installed wheel
 - [x] Command line: `osc8link link|strip|list|supports`
-- [ ] Docs and packaging: README, CHANGELOG, docstrings, metadata
-- [ ] Gates: ruff format, ruff check, mypy --strict, pytest
-- [ ] Mutation run: removing guarded logic makes the suite fail
+- [x] Docs and packaging: README, CHANGELOG, docstrings, metadata
+- [x] Gates: ruff format, ruff check, mypy --strict, pytest
+- [x] Mutation run: removing guarded logic makes the suite fail
 - [ ] Independent review findings fixed with regression tests
 - [ ] Pull request opened, guard clean
 
@@ -95,3 +95,20 @@ below:
   reads the environment only.
 - Building `file://` URIs with the host name: the spec asks for `gethostname()`, which is
   one line for the caller and impossible to test without the real host.
+
+## Verification
+
+- Gates on CPython 3.13.2: `ruff format --check .`, `ruff check .`, `mypy --strict src` (and
+  `src tests`) and `pytest`. With `OSC8LINK_E2E=1` the installed-wheel test builds the wheel
+  and sdist, checks their contents, installs the wheel in a fresh venv and drives the API,
+  the `osc8link` console script and `python -m osc8link` from an empty folder.
+- Pinned sources: the spec's `printf` example is built byte for byte, its syntax lines,
+  params example, C1 bytes, BEL note and URI byte range are read from the pinned file at
+  test time; all 81 links of the VTE test file are read with the expected target and text.
+- Guarded logic was removed one piece at a time (85 mutations of the builder, scanner,
+  detector and command line). The first run left seven alive: two checks in the scanner
+  that could never fire (a payload that does not start with `;`, an empty parameter that
+  the `=` test already drops), now removed; the type checks for `text` and `id`, whose
+  message was not tested (the code below them raised a vaguer TypeError), now matched;
+  the VTE `major > 0` branch, now tested; and two equivalent forms in the version reader,
+  rewritten so that a wrong bound changes the result. The suite now fails for all 85.

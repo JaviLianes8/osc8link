@@ -70,7 +70,9 @@ def iter_links(s: str) -> Iterator[Link]:
 
 def _target(payload: str) -> str | None:
     """Return the URI of a well-formed payload (empty for a close), None if malformed."""
-    if not payload.startswith(";") or ";" not in payload[1:]:
+    # The scanner only matches an 8 followed by ";" or the terminator, so a payload is
+    # empty or starts with ";"; it is well formed when a second ";" ends the parameters.
+    if ";" not in payload[1:]:
         return None
     return payload[1:].split(";", 1)[1]
 
@@ -82,9 +84,7 @@ def _open(payload: str) -> Link | None:
         return None
     raw = payload[1:].split(";", 1)[0]
     params = tuple(
-        (key, value)
-        for key, sep, value in (item.partition("=") for item in raw.split(":") if item)
-        if sep
+        (key, value) for key, sep, value in (item.partition("=") for item in raw.split(":")) if sep
     )
     found = next((value for key, value in params if key == "id"), "")
     return Link(target, "", found or None, params)

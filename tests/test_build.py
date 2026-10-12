@@ -122,12 +122,12 @@ def test_text_may_hold_colours_and_line_breaks() -> None:
 
 @pytest.mark.parametrize("args", [(b"https://a.test", "A"), ("https://a.test", 5)])
 def test_non_string_arguments_are_type_errors(args: tuple[object, object]) -> None:
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=r"^(url|text) must be a str, not (bytes|int)$"):
         link(*args)  # type: ignore[arg-type]
 
 
 def test_a_non_string_id_is_a_type_error() -> None:
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=r"^id must be a str, not int$"):
         link("https://a.test", "A", id=7)  # type: ignore[arg-type]
 
 
