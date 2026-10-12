@@ -98,6 +98,7 @@ def test_strip_streams_line_by_line_and_holds_an_open_sequence() -> None:
     process.stdin.write(b"x;https://b.test\x1b\\B\x1b]8;;\x1b\\ two\n")
     process.stdin.close()
     assert process.stdout.read() == b"B two\n"
+    process.stdout.close()
     assert process.wait() == 0
 
 
@@ -117,6 +118,7 @@ def test_a_reader_that_goes_away_ends_the_command_quietly() -> None:
     process.stdout.close()
     assert process.stderr is not None
     err = process.stderr.read()
+    process.stderr.close()
     assert (process.wait(), err) == (0, b"")
 
 

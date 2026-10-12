@@ -153,3 +153,8 @@ def test_a_stream_whose_isatty_fails_is_not_a_terminal() -> None:
             raise OSError("bad handle")
 
     assert supports_hyperlinks(Broken(), env={"TERM": "alacritty"}, platform="linux") is False
+
+
+def test_signs_and_long_zero_runs_read_like_parse_int() -> None:
+    assert check({"FORCE_HYPERLINK": "0" * 5000}) is False
+    assert check({"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "-5.0"}) is False
