@@ -1,21 +1,31 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
 name = "osc8link"
-version = "0.1.0"
-description = "Build, detect and strip OSC 8 terminal hyperlinks"
+version = "0.2.0"
+description = "Build, detect and strip OSC 8 terminal hyperlinks safely, with terminal support detection and plain-text fallback, zero dependencies, fully typed"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Javier Lianes", email = "javier@lianes8studio.com" }]
-keywords = []
+keywords = ["osc8", "osc-8", "hyperlink", "terminal", "ansi", "escape-sequence", "vt100", "xterm", "cli", "tty", "link", "strip-ansi"]
 classifiers = [
     "Development Status :: 4 - Beta",
+    "Environment :: Console",
     "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Terminals",
+    "Topic :: Software Development :: Libraries",
     "Typing :: Typed",
 ]
 dependencies = []
@@ -30,6 +40,13 @@ Issues = "https://github.com/JaviLianes8/osc8link/issues"
 Changelog = "https://github.com/JaviLianes8/osc8link/blob/main/CHANGELOG.md"
 LinkedIn = "https://www.linkedin.com/in/jlianes/"
 Funding = "https://buymeacoffee.com/jlianesglrs"
+
+[project.scripts]
+osc8link = "osc8link._cli:main"
+
+[tool.hatch.build.targets.sdist]
+# The pinned third-party test files stay in the repository: their tests skip without them.
+exclude = [".github", "IMPROVEMENTS-round*.md", "tests/data"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/osc8link"]
