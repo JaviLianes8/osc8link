@@ -11,7 +11,7 @@ Progress:
 - [x] Docs and packaging: README, CHANGELOG, docstrings, metadata
 - [x] Gates: ruff format, ruff check, mypy --strict, pytest
 - [x] Mutation run: removing guarded logic makes the suite fail
-- [ ] Independent review findings fixed with regression tests
+- [x] Independent review findings fixed with regression tests
 - [ ] Pull request opened, guard clean
 
 ## Starting point
@@ -98,17 +98,55 @@ below:
 
 ## Verification
 
-- Gates on CPython 3.13.2: `ruff format --check .`, `ruff check .`, `mypy --strict src` (and
-  `src tests`) and `pytest`. With `OSC8LINK_E2E=1` the installed-wheel test builds the wheel
-  and sdist, checks their contents, installs the wheel in a fresh venv and drives the API,
-  the `osc8link` console script and `python -m osc8link` from an empty folder.
+- Gates on CPython 3.13.2 (this PC) and 3.14.6 (a second Windows machine, fresh clone):
+  `ruff format --check .`, `ruff check .`, `mypy --strict src` (and `src tests`) and
+  `pytest`. With `OSC8LINK_E2E=1` the installed-wheel test builds the wheel and sdist,
+  checks their contents, installs the wheel in a fresh venv and drives the API, the
+  `osc8link` console script and `python -m osc8link` from an empty folder. The suite also
+  passes from a copy without `tests/data` (as in the sdist), skipping the pinned-file tests.
 - Pinned sources: the spec's `printf` example is built byte for byte, its syntax lines,
   params example, C1 bytes, BEL note and URI byte range are read from the pinned file at
   test time; all 81 links of the VTE test file are read with the expected target and text.
-- Guarded logic was removed one piece at a time (85 mutations of the builder, scanner,
-  detector and command line). The first run left seven alive: two checks in the scanner
-  that could never fire (a payload that does not start with `;`, an empty parameter that
-  the `=` test already drops), now removed; the type checks for `text` and `id`, whose
-  message was not tested (the code below them raised a vaguer TypeError), now matched;
-  the VTE `major > 0` branch, now tested; and two equivalent forms in the version reader,
-  rewritten so that a wrong bound changes the result. The suite now fails for all 85.
+- Guarded logic was removed one piece at a time. First run (85 mutations): seven alive,
+  two unreachable checks in the scanner (removed), untested type error messages (now
+  matched), the VTE `major > 0` branch (now tested) and two equivalent forms in the
+  version reader (rewritten). After the review fixes the run was redone with 108
+  mutations, covering the new parser rules, the stream filter, the pipe handling and the
+  number reader: seven alive, now killed by tests for a bare opener at the end of the text,
+  the C1 and BEL cases of the held-back tail, write errors that must still raise, long
+  zero runs and signs. One survivor remains: pointing stdout at devnull after a closed
+  pipe, which only silences the interpreter's final flush message and is not observable
+  when every write is already flushed.
+- The review regression tests were run against the code before the fixes: all 49 new or
+  changed cases fail there, the linear-time test did not finish (the old scanner is
+  quadratic on C1 openers) and the streaming test blocks (the old filter read all input).
+
+## Review fixes
+
+An independent review attacked the branch; every finding below is fixed with a test that
+fails without the fix:
+
+- Text could hide an opener from the guard: a terminal executes C0 controls and ignores
+  DEL between ESC and `]`, so `ESC BEL ]8;;evil ST` retargeted the link. The guard and the
+  parser now read openers the way the DEC parser does.
+- Quadratic time on unterminated C1 openers (`"\x9d8;" * n`, 60 kB took 7.7 s). The payload
+  now excludes every byte that aborts a control string, which keeps scanning linear; 1 MB of
+  each adversarial pattern is tested.
+- CAN, SUB and C1 controls inside a payload were read as part of it, and a C1 opener did not
+  restart the sequence. They now abort it; ignored C0 controls drop out of the URL; `08` is
+  read as the command number; cut-short and unterminated sequences are not links and are
+  hidden by `strip`, as a terminal hides them.
+- The command line crashed on a closed pipe on Windows (EINVAL, exit 120). It now ends
+  quietly; other write errors still raise. `strip` streams line by line (holding back a
+  sequence still open at a line's end), and `list` escapes control characters and
+  backslashes in both fields.
+- Detection raised on 5000-digit environment values, read non-ASCII digits as numbers and
+  let an `isatty` OSError escape. Numbers are now read like `parseInt` (ASCII, capped).
+- The `auto_link` fallback was a format string (`{text.__class__}` worked, `{0}` raised).
+  It is now a template where only `{text}` and `{url}` are replaced.
+- Docs: the differences from `supports-hyperlinks`, the parser rules, the VTE length
+  limits and the full list of `Link` changes are written down; `__main__` no longer runs
+  on import; the help names `URL` and `TEXT`; a test fixture clears `TERM`; the spec byte
+  range test samples astral characters.
+- Not changed: a lone surrogate in link text is accepted, because the command line passes
+  undecodable arguments through as surrogates and writes them back as the original bytes.
