@@ -3,11 +3,11 @@
 Progress:
 - [x] Brainstorm ranked improvements (this file)
 - [x] Pin the ground truth: OSC 8 spec gist, VTE hyperlink test file, ECMA-48, adoption list
-- [ ] Safe builder: URL percent-encoding, `id` validation, text injection guard, BEL option
-- [ ] Spec parser: C0 and C1 forms, all terminators, link switching, params and `id`
-- [ ] Terminal detection and graceful fallback
+- [x] Safe builder: URL percent-encoding, `id` validation, text injection guard, BEL option
+- [x] Spec parser: C0 and C1 forms, all terminators, link switching, params and `id`
+- [x] Terminal detection and graceful fallback
 - [ ] Typed API and contracts: pinned fixtures, README, typing, installed wheel
-- [ ] Command line: `osc8link link|strip|list|supports`
+- [x] Command line: `osc8link link|strip|list|supports`
 - [ ] Docs and packaging: README, CHANGELOG, docstrings, metadata
 - [ ] Gates: ruff format, ruff check, mypy --strict, pytest
 - [ ] Mutation run: removing guarded logic makes the suite fail
