@@ -1,2 +1,2 @@
 * text=auto eol=lf
-tests/data/** -text
+tests/upstream/** -text

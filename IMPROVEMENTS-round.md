@@ -39,14 +39,17 @@ below:
 
 - The OSC 8 specification, "Hyperlinks (a.k.a. HTML-like anchors) in terminal emulators" by
   Egmont Koblinger, gist revision 5965d6de1b609d8be0ff57b5ad9d4fe172500cf7,
-  https://gist.githubusercontent.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda/raw/5965d6de1b609d8be0ff57b5ad9d4fe172500cf7/Hyperlinks_in_Terminal_Emulators.md,
-  committed unchanged as `tests/data/egmontkob-hyperlinks.md`
+  https://gist.githubusercontent.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda/raw/5965d6de1b609d8be0ff57b5ad9d4fe172500cf7/Hyperlinks_in_Terminal_Emulators.md
   (sha256 fc706ddcaeab44f2a117aa94bd3e9bc583132ba908281b5bb62ad3f58367955f).
 - The VTE hyperlink test file the spec links to, GNOME VTE `perf/hyperlink-demo.txt` at
   commit 05d7324a8cf9cb5af32a4ced094a308139cfd34e,
-  https://gitlab.gnome.org/GNOME/vte/-/raw/master/perf/hyperlink-demo.txt, committed
-  unchanged as `tests/data/vte-hyperlink-demo.txt`
+  https://gitlab.gnome.org/GNOME/vte/-/raw/05d7324a8cf9cb5af32a4ced094a308139cfd34e/perf/hyperlink-demo.txt
   (sha256 bcd08a597353e80deeee2f18ec366ce9cf9d46713db70f1c500ad27f0b89932d).
+- Neither file is committed (owner policy: no third-party text in the repository).
+  `tests/upstream/MANIFEST.json` records URL, revision, size and sha256,
+  `scripts/fetch_upstream.py` fetches and checks them into the ignored `tests/upstream/`
+  folder, and their tests skip while they are absent. The spec's quick example is kept in
+  the tests only as the bytes it prints, labelled with its source.
 - ECMA-48 5th edition (June 1991),
   https://ecma-international.org/wp-content/uploads/ECMA-48_5th_edition_june_1991.pdf
   (sha256 9577ad2514c411584b274ef7a4b3238c80aa93defbb349b18b8c78f78873f450), not committed.
@@ -103,7 +106,7 @@ below:
   `pytest`. With `OSC8LINK_E2E=1` the installed-wheel test builds the wheel and sdist,
   checks their contents, installs the wheel in a fresh venv and drives the API, the
   `osc8link` console script and `python -m osc8link` from an empty folder. The suite also
-  passes from a copy without `tests/data` (as in the sdist), skipping the pinned-file tests.
+  passes without the fetched files (as in a fresh clone or the sdist), skipping their tests.
 - Pinned sources: the spec's `printf` example is built byte for byte, its syntax lines,
   params example, C1 bytes, BEL note and URI byte range are read from the pinned file at
   test time; all 81 links of the VTE test file are read with the expected target and text.

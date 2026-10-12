@@ -1,28 +1,20 @@
 """Read every link in the VTE hyperlink test file, the test file the OSC 8 spec links to.
 
-Source: GNOME VTE perf/hyperlink-demo.txt at commit 05d7324a8cf9cb5af32a4ced094a308139cfd34e,
-fetched 2026-10-12 from https://gitlab.gnome.org/GNOME/vte/-/raw/master/perf/hyperlink-demo.txt
-and committed unchanged as tests/data/vte-hyperlink-demo.txt. The expected links below were
-read off the file by hand, line by line, and are labelled with the line they come from.
+Source: GNOME VTE perf/hyperlink-demo.txt at commit 05d7324a8cf9cb5af32a4ced094a308139cfd34e
+(URL, size and sha256 in tests/upstream/MANIFEST.json). The file is not committed: these
+tests skip until `python scripts/fetch_upstream.py` has fetched it. The expected links below
+were read off the file by hand and are labelled with the line they come from.
 """
 
 from __future__ import annotations
 
-import hashlib
-
 from osc8link import Link, contains_link, iter_links, strip
 
-DEMO_SHA256 = "bcd08a597353e80deeee2f18ec366ce9cf9d46713db70f1c500ad27f0b89932d"
 EX = "http://example.com/"
 
 
 def _links(demo: str) -> list[Link]:
     return list(iter_links(demo))
-
-
-def test_the_pinned_file_is_the_fetched_revision(vte_demo: str) -> None:
-    digest = hashlib.sha256(vte_demo.encode("utf-8", "surrogateescape")).hexdigest()
-    assert digest == DEMO_SHA256
 
 
 def test_every_link_in_the_file_is_found(vte_demo: str) -> None:

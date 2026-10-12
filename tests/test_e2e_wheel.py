@@ -66,7 +66,9 @@ def test_installed_wheel_end_to_end(tmp_path: Path) -> None:
     assert not any(name.startswith("tests/") for name in names)
     listing = _run(sys.executable, "-m", "tarfile", "-l", sdist).stdout.decode()
     assert "IMPROVEMENTS-round" not in listing
-    assert "tests/data" not in listing
+    assert "tests/upstream/MANIFEST.json" in listing
+    assert "egmontkob-hyperlinks.md" not in listing
+    assert "vte-hyperlink-demo.txt" not in listing
     assert "tests/test_spec.py" in listing
 
     env_dir = tmp_path / "venv"

@@ -45,8 +45,8 @@ Funding = "https://buymeacoffee.com/jlianesglrs"
 osc8link = "osc8link._cli:main"
 
 [tool.hatch.build.targets.sdist]
-# The pinned third-party test files stay in the repository: their tests skip without them.
-exclude = [".github", "IMPROVEMENTS-round*.md", "tests/data"]
+# Third-party test files are fetched locally and never shipped; only their manifest is.
+exclude = [".github", "IMPROVEMENTS-round*.md", "tests/upstream/*.md", "tests/upstream/*.txt"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/osc8link"]

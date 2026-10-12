@@ -161,6 +161,10 @@ were HTML anchors. This package does the one job and follows the spec.
   the OSC 8 specification by Egmont Koblinger.
 - [VTE hyperlink test file](https://gitlab.gnome.org/GNOME/vte/-/raw/master/perf/hyperlink-demo.txt):
   every link in it is read correctly, tested.
+
+The spec and the VTE file are not part of the repository. `python scripts/fetch_upstream.py`
+fetches the revisions listed in `tests/upstream/MANIFEST.json` and checks their sha256; the
+tests that read them skip until then.
 - [ECMA-48](https://ecma-international.org/publications-and-standards/standards/ecma-48/),
   8.3.89 (OSC) and 8.3.143 (ST).
 - [OSC 8 adoption in terminal emulators](https://github.com/Alhadis/OSC8-Adoption) and
