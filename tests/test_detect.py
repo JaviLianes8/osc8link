@@ -126,3 +126,30 @@ def test_defaults_read_stdout_and_the_process_environment(monkeypatch: pytest.Mo
     monkeypatch.delenv("FORCE_HYPERLINK")
     monkeypatch.setattr("sys.stdout", None)
     assert supports_hyperlinks(env={"TERM": "alacritty"}, platform="linux") is False
+
+
+@pytest.mark.parametrize(
+    "env",
+    [
+        {"FORCE_HYPERLINK": "9" * 5000},
+        {"FORCE_HYPERLINK": "0" * 5000 + "1"},
+        {"VTE_VERSION": "9" * 5000},
+        {"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "9" * 5000},
+    ],
+)
+def test_huge_numbers_in_the_environment_do_not_raise(env: dict[str, str]) -> None:
+    assert check(env) is True
+
+
+def test_only_ascii_digits_are_numbers() -> None:
+    # parseInt reads no digit here, so the value is not zero and forces links on.
+    assert check({"FORCE_HYPERLINK": "\u0660"}, tty=False) is True
+    assert check({"FORCE_HYPERLINK": "-0"}) is False
+
+
+def test_a_stream_whose_isatty_fails_is_not_a_terminal() -> None:
+    class Broken(io.StringIO):
+        def isatty(self) -> bool:
+            raise OSError("bad handle")
+
+    assert supports_hyperlinks(Broken(), env={"TERM": "alacritty"}, platform="linux") is False

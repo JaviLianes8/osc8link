@@ -56,7 +56,7 @@ def test_strip_round_trips_every_other_byte() -> None:
 def test_list_prints_url_and_flat_text() -> None:
     data = (link("https://a.test", "two\nlines\tand tab") + link("https://b.test", "B")).encode()
     result = run("list", stdin=data)
-    assert result.stdout == b"https://a.test\ttwo lines and tab\nhttps://b.test\tB\n"
+    assert result.stdout == b"https://a.test\ttwo\\nlines\\tand tab\nhttps://b.test\tB\n"
 
 
 @pytest.mark.parametrize(("force", "code"), [("1", 0), ("0", 1)])
@@ -75,3 +75,56 @@ def test_a_missing_command_is_a_usage_error(capsys: pytest.CaptureFixture[str]) 
         main([])
     assert raised.value.code == 2
     assert "usage: osc8link" in capsys.readouterr().err
+
+
+def test_list_escapes_controls_in_both_fields() -> None:
+    # Tabs inside the payload are ignored by terminals; DEL is kept and must be escaped.
+    data = ("\x1b]8;;a\x7fb\tc\x1b\\" + "\x1b[31mX\\\x1b]8;;\x1b\\").encode()
+    assert run("list", stdin=data).stdout == b"a\\x7fbc\t\\x1b[31mX\\\\\n"
+
+
+def test_strip_streams_line_by_line_and_holds_an_open_sequence() -> None:
+    process = subprocess.Popen(
+        [sys.executable, "-m", "osc8link", "strip"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        cwd=SRC,
+    )
+    assert process.stdin is not None and process.stdout is not None
+    process.stdin.write(link("https://a.test", "A").encode() + b" one\n")
+    process.stdin.flush()
+    assert process.stdout.readline() == b"A one\n"
+    process.stdin.write(b"\x1b]8;id=\n")
+    process.stdin.write(b"x;https://b.test\x1b\\B\x1b]8;;\x1b\\ two\n")
+    process.stdin.close()
+    assert process.stdout.read() == b"B two\n"
+    assert process.wait() == 0
+
+
+def test_a_reader_that_goes_away_ends_the_command_quietly() -> None:
+    data = link("https://a.test", "A").encode() * 200_000
+    process = subprocess.Popen(
+        [sys.executable, "-m", "osc8link", "list"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=SRC,
+    )
+    assert process.stdin is not None and process.stdout is not None
+    process.stdin.write(data)
+    process.stdin.close()
+    assert process.stdout.readline() == b"https://a.test\tA\n"
+    process.stdout.close()
+    assert process.stderr is not None
+    err = process.stderr.read()
+    assert (process.wait(), err) == (0, b"")
+
+
+def test_help_names_the_arguments_in_capitals(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(["link", "--help"])
+    assert "URL [TEXT]" in capsys.readouterr().out
+
+
+def test_importing_the_main_module_runs_nothing() -> None:
+    import osc8link.__main__  # noqa: F401

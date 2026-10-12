@@ -14,7 +14,7 @@ class Tty(io.StringIO):
 
 @pytest.fixture
 def ghostty(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("FORCE_HYPERLINK", "FORCE_COLOR", "CI", "TEAMCITY_VERSION", "WT_SESSION"):
+    for name in ("FORCE_HYPERLINK", "FORCE_COLOR", "CI", "TEAMCITY_VERSION", "WT_SESSION", "TERM"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("TERM_PROGRAM", "ghostty")
     monkeypatch.setattr("sys.platform", "linux")
@@ -56,3 +56,13 @@ def test_bad_input_fails_whatever_the_terminal(ghostty: None, stream: io.StringI
         auto_link("https://a.test", "\x1b]8;;https://evil.test\x1b\\", stream=stream)
     with pytest.raises(ValueError):
         auto_link("https://a.test", "A", stream=stream, id="a;b")
+
+
+def test_the_fallback_only_replaces_its_two_placeholders(ghostty: None) -> None:
+    built = auto_link(
+        "https://a.test",
+        "{url}",
+        stream=io.StringIO(),
+        fallback="{0} {x} {text.__class__} {text}={url}",
+    )
+    assert built == "{0} {x} {text.__class__} {url}=https://a.test"

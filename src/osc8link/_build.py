@@ -17,7 +17,10 @@ _TERMINATORS: dict[str, str] = {"st": "\x1b\\", "bel": "\x07"}
 _URL_SAFE = "".join(chr(code) for code in range(0x21, 0x7F))
 # Control strings (OSC, DCS, SOS, PM, APC) in C0 or C1 form. Inside link text one would
 # retarget the link or swallow its closing sequence; colours and other functions are fine.
-_CONTROL_STRING = re.compile(r"\x1b[\]PX^_]|[\x90\x98\x9d\x9e\x9f]")
+# A terminal executes C0 controls and ignores DEL between ESC and the final byte, so
+# "ESC BEL ]" still opens an OSC.
+_CONTROL_STRING = re.compile(r"\x1b[\x00-\x17\x19\x1c-\x1f\x7f]*[\]PX^_]|[\x90\x98\x9d\x9e\x9f]")
+_PLACEHOLDER = re.compile(r"\{(text|url)\}")
 
 
 def link(url: str, text: str, *, id: str | None = None, terminator: Terminator = "st") -> str:
@@ -47,16 +50,18 @@ def auto_link(
     """Return `link(url, text)` when stream shows hyperlinks, a plain fallback otherwise.
 
     stream defaults to sys.stdout and is checked with `supports_hyperlinks`. The fallback
-    is a format string with `{text}` and `{url}` (the encoded url); when text is the url
-    itself the fallback is just the text. The arguments are checked the same way in both
-    cases, so a bad input fails whatever the terminal.
+    is a template where `{text}` and `{url}` (the encoded url) are replaced and nothing else
+    is interpreted; when text is the url itself the fallback is just the text. The
+    arguments are checked the same way in both cases, so a bad input fails whatever the
+    terminal.
     """
     target, params, end = _parts(url, text, id, terminator)
     if supports_hyperlinks(stream):
         return f"\x1b]8;{params};{target}{end}{text}\x1b]8;;{end}"
     if text in (url, target):
         return text
-    return fallback.format(text=text, url=target)
+    values = {"text": text, "url": target}
+    return _PLACEHOLDER.sub(lambda match: values[match.group(1)], fallback)
 
 
 def encode_url(url: str) -> str:

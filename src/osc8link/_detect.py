@@ -84,12 +84,17 @@ def _version(text: str) -> tuple[int, int, int]:
 
 
 def _leading_int(text: str) -> int | None:
-    match = re.match(r"\s*([+-]?\d+)", text)
-    return int(match.group(1)) if match else None
+    """Read leading ASCII digits like JavaScript's parseInt; huge values are capped."""
+    match = re.match(r"[ \t\n\r\f\v]*([+-]?)([0-9]+)", text)
+    if match is None:
+        return None
+    digits = match.group(2).lstrip("0") or "0"
+    value = int(digits) if len(digits) <= 18 else 10**18
+    return -value if match.group(1) == "-" else value
 
 
 def _isatty(stream: TextIO | None) -> bool:
     try:
         return stream is not None and stream.isatty()
-    except (AttributeError, ValueError):
+    except (AttributeError, ValueError, OSError):
         return False

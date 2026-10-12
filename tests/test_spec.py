@@ -68,12 +68,15 @@ def test_the_spec_bel_alternative_is_read(spec_text: str) -> None:
     assert list(iter_links("\x1b]8;;https://a.test\aA\x1b]8;;\a")) == [Link("https://a.test", "A")]
 
 
+_RANGES = (range(0xD800), range(0xE000, 0x110000))
+
+
 def test_the_spec_byte_range_for_the_uri_holds(spec_text: str) -> None:
     assert "must not contain any bytes outside of the 32" + EN_DASH + "126 range" in spec_text
     assert "Bytes outside of this range in the URI must be URI-encoded." in spec_text
     rng = random.Random(48)
     for _ in range(200):
-        url = "".join(chr(rng.randrange(0xD800)) for _ in range(8))
+        url = "".join(chr(rng.choice(rng.choice(_RANGES))) for _ in range(8))
         assert all(32 <= ord(char) <= 126 for char in encode_url(url))
 
 

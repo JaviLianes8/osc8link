@@ -55,12 +55,14 @@ def test_strip_leaves_other_osc_commands_alone() -> None:
 
 def test_an_escape_inside_the_payload_aborts_the_sequence() -> None:
     broken = f"{ESC}]8;;https://a.test{ESC}[31mred{ESC}]8;;{ST}"
-    assert strip(broken) == f"{ESC}]8;;https://a.test{ESC}[31mred"
+    assert strip(broken) == f"{ESC}[31mred"
+    assert contains_link(broken) is False
+    assert list(iter_links(broken)) == []
 
 
-def test_an_unterminated_sequence_is_not_a_link() -> None:
-    text = f"{ESC}]8;;https://a.test and more"
-    assert strip(text) == text
+def test_an_unterminated_sequence_is_hidden_but_not_a_link() -> None:
+    text = f"before {ESC}]8;;https://a.test and more"
+    assert strip(text) == "before "
     assert contains_link(text) is False
     assert list(iter_links(text)) == []
 
