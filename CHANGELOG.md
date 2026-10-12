@@ -30,9 +30,13 @@ All notable changes to this project are documented here. The format follows
   close (0.1.0 put the second link inside the first one's text), a link left open runs to
   the end, links without visible text are skipped.
 - `Link` is a frozen dataclass with `url`, `text`, `id` and `params`. It still unpacks as
-  `(url, text)`, but no longer compares equal to a plain tuple.
-- `strip`, `contains_link` and `iter_links` read the C1 forms of OSC and ST (`U+009D`,
-  `U+009C`); `strip` also removes malformed OSC 8 sequences.
+  `(url, text)`, but it is no longer a tuple: it does not compare equal to one, and
+  indexing (`found[0]`), `len()` and `_asdict()` are gone.
+- `strip`, `contains_link` and `iter_links` read text the way the DEC parser of xterm and
+  VTE does: the C1 forms of OSC and ST (`U+009D`, `U+009C`), C0 controls between ESC and
+  `]`, ignored C0 controls inside the sequence, `08` as the command number, and ESC, CAN,
+  SUB or a C1 control cutting a sequence short. `strip` also removes malformed, cut-short
+  and unterminated OSC 8 sequences, as a terminal hides them.
 
 ## [0.1.0]
 

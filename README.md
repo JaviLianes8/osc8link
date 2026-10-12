@@ -59,9 +59,10 @@ print(auto_link("https://example.com", "https://example.com", stream=pipe))
 # https://example.com
 ```
 
+The fallback is a template: `{text}` and `{url}` are replaced and nothing else is read.
+
 `supports_hyperlinks(stream)` defaults to `sys.stdout`. The spec says a terminal cannot be
-asked, so it reads the environment, with the rules of the `supports-hyperlinks` npm
-package:
+asked, so it reads the environment, modelled on the `supports-hyperlinks` npm package:
 
 - `FORCE_HYPERLINK=1` always says yes and `FORCE_HYPERLINK=0` always says no.
 - Otherwise the stream must be a TTY, `TERM` must not be `dumb` and `FORCE_COLOR` must not
@@ -70,6 +71,11 @@ package:
   Cursor, Ghostty, Zed, Warp, Orca, VTE 0.50.1+ (GNOME Terminal, Tilix, Ptyxis and the
   rest), and the `TERM` of Alacritty, kitty, foot, Ghostty and WezTerm. Anything else on
   Windows says no.
+- Differences from `supports-hyperlinks`: command-line flags such as `--no-hyperlink` are
+  not read (a library does not own `sys.argv`), `NETLIFY` is not special, `TERM=dumb` and
+  `FORCE_COLOR=0` say no even when colour is forced elsewhere, `VTE_VERSION=5000` (0.50.0,
+  which crashes on some links) says no, and the TERM values of foot, Ghostty and WezTerm
+  are added from the OSC 8 adoption list.
 
 ### Read and strip links
 
@@ -95,9 +101,15 @@ print(list(iter_links(switched)) == [Link("https://a.test", "A"), Link("https://
 # True
 ```
 
-`strip` removes OSC 8 sequences only: colours and other escapes stay, also inside
-`Link.text`. Only an OSC 8 sequence ends a link (a terminal reset would end one on screen
-too).
+Text is read the way the DEC parser of xterm and VTE reads it: a C0 control between ESC
+and `]` does not break the opener, C0 controls inside the sequence are ignored, and ESC,
+CAN, SUB or a C1 control cut it short. A cut-short or unterminated sequence is not a link,
+and `strip` removes it up to the byte that cut it, as a terminal hides it. `strip` removes
+OSC 8 sequences only: colours and other escapes stay, also inside `Link.text`. Only an
+OSC 8 sequence ends a link (a terminal reset would end one on screen too).
+
+Length is not limited, but VTE and iTerm2 ignore URIs over 2083 bytes and VTE ignores ids
+over 250 bytes, so keep both well below that.
 
 ### Command line
 
@@ -111,6 +123,9 @@ $ osc8link supports && echo "links work here"
 
 `link` prints one hyperlink (the text defaults to the URL, `--bel` switches the
 terminator). `strip` and `list` read UTF-8 from stdin and pass any other byte through.
+`strip` works line by line, so it can follow a growing log (`tail -f app.log | osc8link
+strip`). `list` reads all of stdin and shows control characters and backslashes escaped
+(`\x1b`, `\t`, `\\`), so its output is safe to print and splits cleanly on tabs.
 `supports` answers through the exit code: 0 yes, 1 no. Bad input exits 2.
 `python -m osc8link` works too.
 
