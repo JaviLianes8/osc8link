@@ -13,6 +13,8 @@ pip install -r requirements-dev.txt
 - Keep public API in `src/osc8link/__init__.py`; internals live in `_`-prefixed modules.
 - Add a test for the behaviour you change. Tests inject time, disk and network; they
   never touch the real thing.
+- Run `python scripts/fetch_upstream.py` once to fetch the spec and the VTE test file
+  (not committed; their tests skip without them).
 - Run `scripts/check.ps1` (format, lint, types, tests) and make sure it passes.
 - One logical change per commit, imperative subject line.
 

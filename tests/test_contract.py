@@ -4,7 +4,17 @@ import osc8link
 
 # The public API. Add every exported name here as the library grows; this list is the
 # contract and the test below fails if the module and this list disagree.
-PUBLIC_API: list[str] = ["Link", "contains_link", "iter_links", "link", "strip"]
+PUBLIC_API: list[str] = [
+    "Link",
+    "Terminator",
+    "auto_link",
+    "contains_link",
+    "encode_url",
+    "iter_links",
+    "link",
+    "strip",
+    "supports_hyperlinks",
+]
 
 
 def test_all_lists_exactly_the_public_api() -> None:

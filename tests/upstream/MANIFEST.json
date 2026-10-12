@@ -1,0 +1,18 @@
+{
+  "egmontkob-hyperlinks.md": {
+    "title": "Hyperlinks (a.k.a. HTML-like anchors) in terminal emulators, by Egmont Koblinger",
+    "url": "https://gist.githubusercontent.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda/raw/5965d6de1b609d8be0ff57b5ad9d4fe172500cf7/Hyperlinks_in_Terminal_Emulators.md",
+    "revision": "gist revision 5965d6de1b609d8be0ff57b5ad9d4fe172500cf7",
+    "fetched": "2026-10-12",
+    "size": 17584,
+    "sha256": "fc706ddcaeab44f2a117aa94bd3e9bc583132ba908281b5bb62ad3f58367955f"
+  },
+  "vte-hyperlink-demo.txt": {
+    "title": "GNOME VTE perf/hyperlink-demo.txt",
+    "url": "https://gitlab.gnome.org/GNOME/vte/-/raw/05d7324a8cf9cb5af32a4ced094a308139cfd34e/perf/hyperlink-demo.txt",
+    "revision": "commit 05d7324a8cf9cb5af32a4ced094a308139cfd34e",
+    "fetched": "2026-10-12",
+    "size": 27034,
+    "sha256": "bcd08a597353e80deeee2f18ec366ce9cf9d46713db70f1c500ad27f0b89932d"
+  }
+}
