@@ -8,11 +8,12 @@ from dataclasses import dataclass
 
 from ._errors import type_error
 
-# Read the way the DEC parser that xterm and VTE follow reads it. OSC is ESC ] (C0 controls
-# between the two are executed and DEL is ignored, so they do not break the opener) or the
-# C1 byte U+009D. ST is ESC \ or U+009C, and XTerm's BEL is accepted everywhere. Inside the
-# payload ESC, CAN, SUB and every C1 control abort the string, so a sequence cut short by
-# one of them (or by the end of the text) draws nothing and is not a link.
+# Read the way VTE's parser reads it. OSC is ESC ] (C0 controls between the two are
+# executed and DEL is ignored, so they do not break the opener) or the C1 byte U+009D. ST is
+# ESC \ or U+009C, and XTerm's BEL is accepted everywhere. Inside the payload C0 controls
+# and DEL are ignored, while ESC, CAN, SUB and every C1 control abort the string, so a
+# sequence cut short by one of them (or by the end of the text) draws nothing and is not a
+# link. Unlike VTE, 7-bit and 8-bit openers and terminators may be mixed, as in xterm.js.
 _ABORT = r"\x07\x18\x1a\x1b\x80-\x9f"
 _SEQUENCE = re.compile(
     r"(?:\x1b(?P<c0>[\x00-\x17\x19\x1c-\x1f\x7f]*)\]|\x9d)"
