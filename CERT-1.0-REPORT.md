@@ -233,7 +233,10 @@ were each applied to a copy of the fixed tree and are killed by the new tests.
 | e-F2 WezTerm 20200620 boundary | pinned true at 20200620, false at 20200619 | test_detect |
 | e-F3 explicitly empty TEXT | pinned; README and GUIDE say the default applies only when TEXT is omitted | test_cli::test_an_explicitly_empty_text_is_kept_empty |
 
-Every behaviour change is in the CHANGELOG 1.0.0 section. Fix commit: see below.
+Every behaviour change is in the CHANGELOG 1.0.0 section. Fix commit: 8bdf85e. At that
+commit on this PC (CPython 3.13.2, every fetched source, the node oracles, Rich and
+`OSC8LINK_E2E=1`): `ruff format --check .`, `ruff check .`, `mypy --strict src`,
+`mypy --strict src tests` and `pytest` (782 passed, none skipped) each exit 0.
 
 ## Independent review (item 16)
 
