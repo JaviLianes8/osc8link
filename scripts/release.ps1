@@ -1,15 +1,17 @@
 # Build and upload to PyPI. Run scripts/check.ps1 first.
-# The name must not already exist on PyPI; the token is read from a secret store, never git.
+# Refuses a version that is already on PyPI; the token is read from a secret store, never git.
 $ErrorActionPreference = "Stop"
 
+$version = (Select-String -Path pyproject.toml -Pattern '^version = "([^"]+)"$').Matches[0].Groups[1].Value
 # Works on both Windows PowerShell 5.1 and pwsh 7 (generic catch, no PS7-only types).
 $taken = $true
 try {
-    Invoke-WebRequest -UseBasicParsing "https://pypi.org/pypi/osc8link/json" | Out-Null
+    Invoke-WebRequest -UseBasicParsing "https://pypi.org/pypi/osc8link/$version/json" | Out-Null
 } catch {
     if ($_.Exception.Response.StatusCode.value__ -eq 404) { $taken = $false } else { throw }
 }
-if ($taken) { throw "The name 'osc8link' already exists on PyPI. Choose another before publishing." }
+if ($taken) { throw "osc8link $version is already on PyPI. Bump the version first." }
+if (git status --porcelain) { throw "The working tree is not clean. Commit or stash first." }
 
 $token = $env:PYPI_TOKEN
 if (-not $token -and (Test-Path "C:\secrets\pypi-token.txt")) {

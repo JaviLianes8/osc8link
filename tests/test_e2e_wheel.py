@@ -23,7 +23,7 @@ pytestmark = pytest.mark.skipif(
 PROGRAM = r"""
 import importlib.metadata, importlib.resources, io, pickle
 import osc8link
-from osc8link import Link, auto_link, contains_link, iter_links, link, strip
+from osc8link import Link, LinkError, auto_link, contains_link, iter_links, link, strip
 
 assert "site-packages" in osc8link.__file__, osc8link.__file__
 assert importlib.metadata.version("osc8link") == osc8link.__version__
@@ -39,7 +39,7 @@ assert pickle.loads(pickle.dumps(found)) == found and found.id == "x"
 for bad in ({"id": "a;b"}, {"terminator": "esc"}):
     try:
         link("https://a.test", "A", **bad)
-    except ValueError:
+    except LinkError:
         pass
     else:
         raise AssertionError(bad)
@@ -66,6 +66,11 @@ def test_installed_wheel_end_to_end(tmp_path: Path) -> None:
     assert not any(name.startswith("tests/") for name in names)
     listing = _run(sys.executable, "-m", "tarfile", "-l", sdist).stdout.decode()
     assert "IMPROVEMENTS-round" not in listing
+    assert "CERT-1.0" not in listing
+    assert "tests/upstream/node" not in listing
+    assert "vte-parser.hh" not in listing
+    assert "GUIDE.md" in listing and "LICENSE" in listing
+    assert "tests/oracles/xterm_cells.cjs" in listing
     assert "tests/upstream/MANIFEST.json" in listing
     assert "egmontkob-hyperlinks.md" not in listing
     assert "vte-hyperlink-demo.txt" not in listing
@@ -93,3 +98,6 @@ def test_installed_wheel_end_to_end(tmp_path: Path) -> None:
     listed = _run(python, "-m", "osc8link", "list", cwd=work, stdin=cli.stdout)
     assert listed.stdout == b"https://a.test\tA\n"
     assert _run(script, "link", "", cwd=work).returncode == 2
+    version = _run(script, "--version", cwd=work)
+    assert version.stdout.decode().strip() == "osc8link 1.0.0"
+    assert any(name.endswith("licenses/LICENSE") for name in names)
