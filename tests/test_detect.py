@@ -133,6 +133,15 @@ def test_defaults_read_stdout_and_the_process_environment(monkeypatch: pytest.Mo
     assert supports_hyperlinks(env={"TERM": "alacritty"}, platform="linux") is False
 
 
+def test_an_empty_env_is_read_as_is_not_as_the_process_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FORCE_HYPERLINK", "1")
+    monkeypatch.setenv("WT_SESSION", "1")
+    assert supports_hyperlinks(io.StringIO(), env={}) is False
+    assert check({}, platform="win32") is False
+
+
 @pytest.mark.parametrize(
     "env",
     [

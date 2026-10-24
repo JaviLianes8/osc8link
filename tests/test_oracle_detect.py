@@ -93,6 +93,8 @@ RECORDED: list[tuple[dict[str, str], bool]] = [
     ({"TERM": "xterm", "TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": NBSP + "3.1"}, True),
     ({"TERM": "xterm", "VTE_VERSION": "05001"}, True),
     ({"TERM": "xterm", "VTE_VERSION": "5001"}, True),
+    ({"TERM": "xterm", "VTE_VERSION": "502"}, False),
+    ({"TERM": "xterm", "VTE_VERSION": "999"}, False),
     ({"TERM": "xterm", "TERM_PROGRAM": "WezTerm", "TERM_PROGRAM_VERSION": NIX_ARABIC}, False),
     (
         {

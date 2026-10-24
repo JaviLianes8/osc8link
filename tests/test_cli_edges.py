@@ -55,6 +55,28 @@ def test_main_puts_a_missing_stderr_back_as_it_was(monkeypatch: pytest.MonkeyPat
     assert sys.stderr is None
 
 
+@pytest.mark.parametrize("args", [["list"], ["strip"], ["link", "https://a.test", "A"]])
+def test_a_reader_gone_before_a_short_output_ends_the_command_quietly(args: list[str]) -> None:
+    # The output is short, so it is still buffered when the write fails; without the
+    # redirect to the null device, flushing it again at exit fails and Python exits 120.
+    reads = args[0] != "link"
+    process = subprocess.Popen(
+        [sys.executable, "-m", "osc8link", *args],
+        stdin=subprocess.PIPE if reads else subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=SRC,
+    )
+    assert process.stdout is not None and process.stderr is not None
+    process.stdout.close()
+    if process.stdin is not None:
+        process.stdin.write(b"\x1b]8;;https://a.test\x1b\\A\x1b]8;;\x1b\\\n")
+        process.stdin.close()
+    err = process.stderr.read()
+    process.stderr.close()
+    assert (process.wait(), err) == (0, b"")
+
+
 def _strip(data: str) -> str:
     result = subprocess.run(
         [sys.executable, "-m", "osc8link", "strip"],

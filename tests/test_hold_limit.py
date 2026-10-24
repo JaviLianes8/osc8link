@@ -113,6 +113,16 @@ def test_a_held_line_goes_out_as_soon_as_its_sequence_ends_or_breaks(
     assert _timeline(lines) == expected
 
 
+@pytest.mark.parametrize("opener", ["\x1b]\n", "\x9d\n"])
+@pytest.mark.parametrize("number", ["1\n", "9\n", "18\n"])
+def test_a_held_opener_broken_by_another_command_number_goes_out_at_once(
+    opener: str, number: str
+) -> None:
+    # Only 0s may come before the 8, so OSC 1, 9 or 18 ends the hold on the line it is read.
+    lines = ["a" + opener, number, "y\n", "z\n"]
+    assert _timeline(lines) == [(1, "a"), (2, opener + number), (3, "y\n"), (4, "z\n")]
+
+
 @pytest.mark.parametrize(
     "escape", ["\x1b[1", "\x1b", "\x1bP", "\x9b1"], ids=["csi", "esc", "dcs", "c1-csi"]
 )

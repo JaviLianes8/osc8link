@@ -51,6 +51,17 @@ def test_bad_values_raise_link_error_with_a_short_message(
         assert HUGE[:100] not in message
 
 
+@pytest.mark.parametrize(
+    ("size", "quoted"),
+    [(40, repr("b" * 40)), (41, repr("b" * 40) + "... (41 characters)")],
+)
+def test_messages_quote_at_most_40_characters(size: int, quoted: str) -> None:
+    # 40 characters are quoted whole; past that, the first 40 and the length.
+    expected = f"terminator must be 'st' or 'bel', not {quoted}"
+    for call in (link, auto_link):
+        assert _message(call, "https://a.test", "x", terminator="b" * size) == (LinkError, expected)
+
+
 def test_link_error_is_a_value_error() -> None:
     with pytest.raises(ValueError, match="url must not be empty"):
         link("", "A")

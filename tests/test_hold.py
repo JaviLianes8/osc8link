@@ -62,11 +62,16 @@ def test_an_open_sequence_just_under_the_limit_is_held_whole() -> None:
     assert _stream(lines) == "T\n"
 
 
-@pytest.mark.parametrize("opener", [OPENER, "\x1b\n", "\x1b]\n", "\x1b]8\n", "\x9d0\n"])
+# An opener and the lines that keep it open: line breaks, payload text, or both mixed.
+HELD = [(opener, ["\n"]) for opener in [OPENER, "\x1b\n", "\x1b]\n", "\x1b]8\n", "\x9d0\n"]]
+HELD += [(OPENER, ["x\n"]), (OPENER, ["x\n", "\x05\n", "\n"]), ("\x9d8;\n", ["x\x7fy\n"])]
+
+
+@pytest.mark.parametrize(("opener", "body"), HELD)
 def test_holding_scans_each_character_a_bounded_number_of_times(
-    monkeypatch: pytest.MonkeyPatch, opener: str
+    monkeypatch: pytest.MonkeyPatch, opener: str, body: list[str]
 ) -> None:
-    lines = ([opener] + ["\n"] * 20_000) * 2
+    lines = ([opener] + body * (20_000 // len(body))) * 2
     scanned = 0
 
     def counted_tail(s: str) -> int:
@@ -85,8 +90,9 @@ def test_holding_scans_each_character_a_bounded_number_of_times(
     assert scanned <= 4 * len("".join(lines))
 
 
-def test_a_hostile_open_sequence_streams_about_as_fast_as_plain_text() -> None:
-    hostile = ([OPENER] + ["\n"] * 30_000) * 2
+@pytest.mark.parametrize("body", ["\n", "x\n"])
+def test_a_hostile_open_sequence_streams_about_as_fast_as_plain_text(body: str) -> None:
+    hostile = ([OPENER] + [body] * 30_000) * 2
     plain = ["line\n"] * (len(hostile) // 2)
     start = time.perf_counter()
     _stream(plain)
