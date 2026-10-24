@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import errno
+from pathlib import Path
 
 import pytest
 
 from osc8link import strip
-from osc8link._cli import main
+from osc8link._cli import _strip_stream, main
 from osc8link._sequences import unfinished_tail
 
 
@@ -50,3 +51,37 @@ def test_write_errors_other_than_a_closed_pipe_are_raised(monkeypatch: pytest.Mo
     monkeypatch.setattr("sys.stdout", _FullStdout())
     with pytest.raises(OSError, match="No space"):
         main(["link", "https://a.test"])
+
+
+def test_a_sequence_cut_short_inside_the_line_is_not_held_back() -> None:
+    line = "a\x1b]8;;x\x18b\n"
+    assert unfinished_tail(line) == len(line)
+    chunks = _strip_stream(iter([line, "c\n"]))
+    assert next(chunks) == "a\x18b\n"
+
+
+class _Gone:
+    def __init__(self, code: int) -> None:
+        self.code = code
+
+    def write(self, data: bytes) -> int:
+        raise OSError(self.code, "the reader went away")
+
+    def flush(self) -> None:
+        pass
+
+
+@pytest.mark.parametrize("code", [errno.EINVAL, errno.EPIPE])
+def test_a_reader_that_went_away_ends_the_command_quietly(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, code: int
+) -> None:
+    with (tmp_path / "out").open("wb") as target:
+
+        class _Stdout:
+            buffer = _Gone(code)
+
+            def fileno(self) -> int:
+                return target.fileno()
+
+        monkeypatch.setattr("sys.stdout", _Stdout())
+        assert main(["link", "https://a.test"]) == 0

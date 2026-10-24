@@ -24,6 +24,9 @@ from osc8link import supports_hyperlinks
 
 NBSP, BOM, LS = chr(0xA0), chr(0xFEFF), chr(0x2028)
 ARABIC = "".join(chr(0x660 + digit) for digit in (5, 0, 0, 1))
+NIX_ARABIC = "0-unstable-" + "".join(
+    chr(0x660 + int(char)) if char.isdigit() else char for char in "2020-06-20"
+)
 NUMBERS = ["", "0", "1", "00", "-0", "+1", " 0", NBSP + "0", BOM + "1", LS + "0", "0x1", "abc"]
 VALUES: dict[str, list[str]] = {
     "FORCE_HYPERLINK": [*NUMBERS, "true", "false", "9" * 30],
@@ -60,6 +63,7 @@ VALUES: dict[str, list[str]] = {
         "20200619-1",
         "0-unstable-2020-06-20",
         "0-unstable-2019-01-01",
+        NIX_ARABIC,
         "3.1",
         NBSP + "3.1",
         "3." + NBSP + "1",
@@ -89,6 +93,15 @@ RECORDED: list[tuple[dict[str, str], bool]] = [
     ({"TERM": "xterm", "TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": NBSP + "3.1"}, True),
     ({"TERM": "xterm", "VTE_VERSION": "05001"}, True),
     ({"TERM": "xterm", "VTE_VERSION": "5001"}, True),
+    ({"TERM": "xterm", "TERM_PROGRAM": "WezTerm", "TERM_PROGRAM_VERSION": NIX_ARABIC}, False),
+    (
+        {
+            "TERM": "xterm",
+            "TERM_PROGRAM": "WezTerm",
+            "TERM_PROGRAM_VERSION": "0-unstable-2020-06-20",
+        },
+        True,
+    ),
 ]
 
 

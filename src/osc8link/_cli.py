@@ -7,7 +7,7 @@ import errno
 import os
 import re
 import sys
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 
 from . import __version__
 from ._build import Terminator, link
@@ -69,7 +69,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
-def _strip_stream(lines: Iterable[str]) -> Iterable[str]:
+def _strip_stream(lines: Iterable[str]) -> Iterator[str]:
     """Strip line by line, holding back a sequence that is still open at a line's end."""
     pending = ""
     for line in lines:
