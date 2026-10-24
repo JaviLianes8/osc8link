@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-10-24
+## [1.0.0] - 2026-10-25
 
 First stable release. The public API is the ten names in `osc8link.__all__` with the
 signatures in the README, the `Link` fields, the `LinkError` type, the command line
