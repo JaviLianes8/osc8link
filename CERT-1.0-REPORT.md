@@ -192,7 +192,11 @@ limit. 53 killed at once; 3 survived and got contracts in 056f1d6, then were kil
 
 ## Gates (item 15)
 
-See the final run below.
+At c2600d3 on this PC (CPython 3.13.2), each command on its own, with every fetched source,
+the node oracles, Rich and `OSC8LINK_E2E=1`: `ruff format --check .`, `ruff check .`,
+`mypy --strict src`, `mypy --strict src tests` and `pytest` (551 passed, none skipped,
+doctests included) all exit 0. Without the fetched files the tests that need them skip
+cleanly, as in a fresh clone.
 
 ## QA lenses (item 19)
 
