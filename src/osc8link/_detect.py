@@ -99,7 +99,7 @@ def _version(text: str) -> tuple[int, int, int]:
 
 def _leading_int(text: str) -> int | None:
     """Read leading ASCII digits like JavaScript's parseInt; huge values are capped."""
-    match = re.match(r"[ \t\n\r\f\v]*([+-]?)([0-9]+)", text)
+    match = _LEADING_INT.match(text)
     if match is None:
         return None
     digits = match.group(2).lstrip("0") or "0"
