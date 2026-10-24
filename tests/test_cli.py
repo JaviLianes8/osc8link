@@ -10,7 +10,9 @@ import pytest
 from osc8link import link
 from osc8link._cli import main
 
-SRC = Path(__file__).resolve().parents[1] / "src"
+ROOT = Path(__file__).resolve().parents[1]
+# Run the source tree when there is one, else the installed package (as from the sdist).
+SRC = ROOT / "src" if (ROOT / "src").is_dir() else ROOT / "tests"
 
 
 def run(
