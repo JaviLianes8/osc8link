@@ -111,3 +111,36 @@ def test_a_held_line_goes_out_as_soon_as_its_sequence_ends_or_breaks(
     lines: list[str], expected: list[tuple[int, str]]
 ) -> None:
     assert _timeline(lines) == expected
+
+
+@pytest.mark.parametrize(
+    "escape", ["\x1b[1", "\x1b", "\x1bP", "\x9b1"], ids=["csi", "esc", "dcs", "c1-csi"]
+)
+def test_a_let_go_opener_cancels_the_escape_left_unfinished_before_it(escape: str) -> None:
+    # The opener is held from where it starts, so "a" and the escape go out first and the
+    # escape is still unfinished when the held text reaches the limit and is let go.
+    lines = _exact(LIMIT)
+    lines[0] = "a" + escape + lines[0]
+    assert len("".join(lines[:-1])) - len("a" + escape) == LIMIT
+    # The opener ended the escape; with the opener dropped a CAN must end it, or the BEL
+    # after it would be read as part of the escape.
+    assert _stream(lines) == "a" + escape + "\x18" + "\x07T\n"
+
+
+LINK_LINE = "\x1b]8;;https://a.test\x07T\x1b]8;;\x07\n"
+
+
+LET_GO_PREFIXES = {
+    "long-line": ["\x1b]" + "0" * (LIMIT + 10) + "\n"],
+    "esc": ["\x1b\n", *["\n"] * (LIMIT - 2)],
+    "c1-osc": ["\x9d\n", *["\n"] * (LIMIT - 2)],
+}
+
+
+@pytest.mark.parametrize("name", list(LET_GO_PREFIXES))
+def test_after_a_let_go_the_next_line_is_stripped_as_it_comes(name: str) -> None:
+    held = LET_GO_PREFIXES[name]
+    # The opener prefix goes out whole with exactly one CAN after it; the line after it
+    # starts afresh, so it comes out as strip() gives it on its own.
+    assert _stream([*held, LINK_LINE]) == "".join(held) + "\x18" + strip(LINK_LINE)
+    assert strip(LINK_LINE) == "T\n"
