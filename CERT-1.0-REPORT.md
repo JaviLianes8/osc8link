@@ -288,6 +288,32 @@ there, and the installed-wheel test).
 
 None.
 
+### Round 3 (reviewed at 81ba3fa)
+
+Lens e re-checked every earlier finding as fixed (C01, C09, C09b, D09, G1 to G4 and their
+mutants are killed) and swept 24 mutants of the code changed since d444d16: 21 killed,
+M22 (SCI stand-in `ESC` instead of `ESC Z`) equivalent, as a differential fuzz of 783,938
+inputs confirmed, and two survivors in the let-go branch of the stream filter. Both are
+missing contracts on correct code, so no behaviour changed and the CHANGELOG is unchanged.
+Both are fixed; none is disputed.
+
+| Finding | Fix | Contract |
+| --- | --- | --- |
+| e-H1 let-go after an unfinished escape (M31: the let-go strips with an empty state) | contracts only | test_hold_limit::test_a_let_go_opener_cancels_the_escape_left_unfinished_before_it: `ESC [ 1`, a lone ESC, `ESC P` and U+009B `1` right before an opener held to exactly 65,536 characters; the exact output has the CAN right after the escape |
+| e-H2 state not reset after a let-go (M07: the stale state is kept) | contracts only | test_hold_limit::test_after_a_let_go_the_next_line_is_stripped_as_it_comes: after an `ESC ]` number prefix in one long line, ESC and U+009D followed by line breaks up to the limit, a line holding a complete link comes out as exactly one CAN and then `strip()` of that line |
+
+Each survivor applied alone to a copy of the fixed tree fails the new tests: M31 fails all
+4 escape cases, M07 all 3 prefix cases; the unmutated tree passes them.
+
+Fix commit: 63c1848. At that commit on this PC, with every fetched source, the node
+oracles, Rich and `OSC8LINK_E2E=1`: `ruff format --check .`, `ruff check .`,
+`mypy --strict src`, `mypy --strict src tests` and `pytest` (CPython 3.13.2, 846 passed,
+none skipped) each exit 0.
+
+#### Disputed findings
+
+None.
+
 ## Independent review (item 16)
 
 Pending.
