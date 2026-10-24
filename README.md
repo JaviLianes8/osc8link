@@ -1,7 +1,20 @@
 # osc8link
 
+[![Lianes8 Certified](https://lianes8studio.com/certified/lianes8-certified-badge.svg)](https://lianes8studio.com/certified)
+
 Build, detect and strip OSC 8 terminal hyperlinks. Zero dependencies, fully typed, checked
-against the OSC 8 specification and the VTE hyperlink test file.
+against the OSC 8 specification, VTE's own parser source, xterm.js and the
+`supports-hyperlinks` package.
+
+## The problem
+
+OSC 8 is the escape sequence terminals show as a clickable link:
+`ESC ] 8 ; params ; URI ESC \` before the text and `ESC ] 8 ; ; ESC \` after it. Writing
+one by hand is easy to get subtly wrong: a URL holding a control character or a non-ASCII
+letter breaks the sequence, text holding its own sequence retargets the link, and a pipe or
+a terminal without support shows escape garbage. Reading links back (to strip them from a
+log, or list them) means following the terminal's state machine, not a regular expression
+for HTML-like anchors. `osc8link` does both jobs and nothing else.
 
 ## Install
 
@@ -14,7 +27,7 @@ pip install osc8link
 ### Build a link
 
 ```python
-from osc8link import link
+from osc8link import LinkError, link
 
 cell = link("https://example.com", "Example")
 print(repr(cell))
@@ -36,7 +49,7 @@ print(repr(link("https://example.com", "x", terminator="bel")))
 # Text with its own control string (another OSC 8 link, say) would retarget the link.
 try:
     link("https://example.com", "\x1b]8;;https://evil.test\x1b\\click")
-except ValueError as error:
+except LinkError as error:
     print(error)
     # text must not hold a control string such as an OSC 8 sequence
 ```
@@ -60,22 +73,11 @@ print(auto_link("https://example.com", "https://example.com", stream=pipe))
 ```
 
 The fallback is a template: `{text}` and `{url}` are replaced and nothing else is read.
-
-`supports_hyperlinks(stream)` defaults to `sys.stdout`. The spec says a terminal cannot be
-asked, so it reads the environment, modelled on the `supports-hyperlinks` npm package:
-
-- `FORCE_HYPERLINK=1` always says yes and `FORCE_HYPERLINK=0` always says no.
-- Otherwise the stream must be a TTY, `TERM` must not be `dumb` and `FORCE_COLOR` must not
-  be `0` or `false`; CI services (`CI`, `TEAMCITY_VERSION`) say no.
-- Recognised: Windows Terminal (`WT_SESSION`), iTerm2 3.1+, WezTerm, VS Code 1.72+ and
-  Cursor, Ghostty, Zed, Warp, Orca, VTE 0.50.1+ (GNOME Terminal, Tilix, Ptyxis and the
-  rest), and the `TERM` of Alacritty, kitty, foot, Ghostty and WezTerm. Anything else on
-  Windows says no.
-- Differences from `supports-hyperlinks`: command-line flags such as `--no-hyperlink` are
-  not read (a library does not own `sys.argv`), `NETLIFY` is not special, `TERM=dumb` and
-  `FORCE_COLOR=0` say no even when colour is forced elsewhere, `VTE_VERSION=5000` (0.50.0,
-  which crashes on some links) says no, and the TERM values of foot, Ghostty and WezTerm
-  are added from the OSC 8 adoption list.
+`supports_hyperlinks(stream)` defaults to `sys.stdout`. A terminal cannot be asked, so it
+reads the environment with the rules of the `supports-hyperlinks` npm package
+(`FORCE_HYPERLINK`, TTY, Windows Terminal, iTerm2, WezTerm, VS Code, Ghostty, VTE,
+Alacritty, kitty and more); the [GUIDE](https://github.com/JaviLianes8/osc8link/blob/main/GUIDE.md#detection)
+lists every rule and the few deliberate differences.
 
 ### Read and strip links
 
@@ -96,20 +98,17 @@ print(first.id, first.params)
 
 # Terminals are state machines: an open switches the target without a close, and a link
 # left open runs to the end of the text. ESC backslash, BEL and the C1 forms are all read.
-switched = "\x1b]8;;https://a.test\x07A\x1b]8;;https://b.test\x9cB"
+switched = "\x1b]8;;https://a.test\x07A\x9d8;;https://b.test\x9cB"
 print(list(iter_links(switched)) == [Link("https://a.test", "A"), Link("https://b.test", "B")])
 # True
 ```
 
-Text is read the way the DEC parser of xterm and VTE reads it: a C0 control between ESC
-and `]` does not break the opener, C0 controls inside the sequence are ignored, and ESC,
-CAN, SUB or a C1 control cut it short. A cut-short or unterminated sequence is not a link,
-and `strip` removes it up to the byte that cut it, as a terminal hides it. `strip` removes
-OSC 8 sequences only: colours and other escapes stay, also inside `Link.text`. Only an
-OSC 8 sequence ends a link (a terminal reset would end one on screen too).
-
-Length is not limited, but VTE and iTerm2 ignore URIs over 2083 bytes and VTE ignores ids
-over 250 bytes, so keep both well below that.
+Text is read the way VTE, the terminal the spec was written for, reads it: C0 controls
+between ESC and `]` do not break the opener, C0 controls and DEL inside the sequence are
+ignored, and ESC (unless followed by a backslash), CAN, SUB or a C1 control cut it short.
+A cut-short or unterminated sequence is not a link, and `strip` removes it up to the
+character that cut it, as a terminal hides it. `strip` removes OSC 8 sequences only:
+colours and other escapes stay, also inside `Link.text`.
 
 ### Command line
 
@@ -124,55 +123,71 @@ $ osc8link supports && echo "links work here"
 `link` prints one hyperlink (the text defaults to the URL, `--bel` switches the
 terminator). `strip` and `list` read UTF-8 from stdin and pass any other byte through.
 `strip` works line by line, so it can follow a growing log (`tail -f app.log | osc8link
-strip`). `list` reads all of stdin and shows control characters and backslashes escaped
-(`\x1b`, `\t`, `\\`), so its output is safe to print and splits cleanly on tabs.
-`supports` answers through the exit code: 0 yes, 1 no. Bad input exits 2.
-`python -m osc8link` works too.
+strip`). `list` shows control characters and backslashes escaped (`\x1b`, `\t`, `\\`), so
+its output is safe to print and splits cleanly on tabs. `supports` answers through the exit
+code: 0 yes, 1 no. Bad input exits 2. `osc8link --version` and `python -m osc8link` work too.
 
 ## API
 
 | Name | What it does |
 |---|---|
-| `link(url, text, *, id=None, terminator="st")` | Build a hyperlink; raises `ValueError` on input a terminal could misread |
+| `link(url, text, *, id=None, terminator="st")` | Build a hyperlink |
 | `auto_link(url, text, *, stream=None, fallback="{text} ({url})", id=None, terminator="st")` | `link` where the terminal shows links, plain text elsewhere |
 | `supports_hyperlinks(stream=None, *, env=None, platform=None)` | Whether stream is a terminal known to show links |
 | `encode_url(url)` | Percent-encode everything outside `!` to `~` as UTF-8 |
-| `strip(s)` | Remove every OSC 8 sequence, keep the visible text |
-| `contains_link(s)` | Whether s opens a link to a non-empty URI |
-| `iter_links(s)` | Yield each `Link` in order |
+| `strip(s, /)` | Remove every OSC 8 sequence, keep the visible text |
+| `contains_link(s, /)` | Whether s opens a link to a non-empty URI |
+| `iter_links(s, /)` | An iterator over each `Link`, in order |
 | `Link(url, text, id=None, params=())` | A found link; frozen, hashable, unpacks as `(url, text)` |
+| `LinkError` | A `ValueError` for arguments that cannot be written safely |
 | `Terminator` | `Literal["st", "bel"]` |
 
-`link` rejects an empty URL (an OSC 8 without one closes a link), an `id` holding `:`, `;`
-or a character outside 32 to 126, and text holding a control string (OSC, DCS, SOS, PM or
-APC, in 7-bit or 8-bit form). An empty `id` is the same as none, as in the spec.
+`link`, `auto_link` and `encode_url` raise `LinkError` for an empty URL (an OSC 8 without
+one closes a link), a URL holding a lone surrogate, an `id` holding `:`, `;` or a
+character outside 32 to 126, text holding a control string (OSC, DCS, SOS, PM or APC, in
+7-bit or 8-bit form) and an unknown terminator. Every function raises `TypeError` for an
+argument that is not a `str`. Messages name the argument and quote at most 40 characters.
 
 ## Why
 
-OSC 8 is the escape sequence terminals render as a clickable hyperlink:
-`ESC ] 8 ; params ; URI ESC \` around the text, closed by `ESC ] 8 ; ; ESC \`.
-Full terminal toolkits know how to emit it, but the primitive is buried inside them, and
-inline snippets copied between projects write URLs unencoded and read links as if they
-were HTML anchors. This package does the one job and follows the spec.
+Python's standard library has nothing for OSC 8, and `click.style` (8.3.1) has no link
+option. Rich (15.0.0) writes links for its `[link]` markup and reads them back in
+`Text.from_ansi`, but only in the `ESC \` form: a link ended with BEL (XTerm's form, which
+the spec says probably all terminals accept) or written with the C1 controls comes back as
+visible text, and Rich is a full rendering toolkit with its own dependencies. The
+`supports-hyperlinks` detector is JavaScript. `osc8link` is one small, typed,
+dependency-free module that builds links a terminal cannot misread, reads them the way a
+terminal does and tells whether the terminal will show them.
 
-## Sources
+## Ground truth
 
-- [Hyperlinks in terminal emulators](https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda),
-  the OSC 8 specification by Egmont Koblinger.
-- [VTE hyperlink test file](https://gitlab.gnome.org/GNOME/vte/-/raw/master/perf/hyperlink-demo.txt):
-  every link in it is read correctly, tested.
+The test suite checks the library against sources fetched and pinned by hash in
+`tests/upstream/MANIFEST.json`, none of them committed:
 
-The spec and the VTE file are not part of the repository. `python scripts/fetch_upstream.py`
-fetches the revisions listed in `tests/upstream/MANIFEST.json` and checks their sha256; the
-tests that read them skip until then.
-- [ECMA-48](https://ecma-international.org/publications-and-standards/standards/ecma-48/),
-  8.3.89 (OSC) and 8.3.143 (ST).
-- [OSC 8 adoption in terminal emulators](https://github.com/Alhadis/OSC8-Adoption) and
-  [supports-hyperlinks](https://github.com/chalk/supports-hyperlinks) for detection.
+- the [OSC 8 specification](https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda)
+  by Egmont Koblinger and the [VTE hyperlink test file](https://gitlab.gnome.org/GNOME/vte/-/raw/master/perf/hyperlink-demo.txt)
+  it links to (all 81 links read correctly);
+- VTE's parser source: how every character up to U+00A0 behaves inside a sequence is read
+  out of its state machine and compared with this library;
+- xterm.js (`@xterm/headless`) run as a terminal on thousands of seeded random texts, every
+  printed character carrying the same link;
+- the `supports-hyperlinks` package run in node on hundreds of random environments;
+- Rich's real output, when Rich is installed.
+
+`python scripts/fetch_upstream.py` fetches the files and installs the node packages; the
+tests that need them skip until then. The full list of sources and the cases where VTE and
+xterm.js disagree are in the [GUIDE](https://github.com/JaviLianes8/osc8link/blob/main/GUIDE.md#ground-truth).
+
+## Documentation
+
+- [GUIDE](https://github.com/JaviLianes8/osc8link/blob/main/GUIDE.md): reading rules,
+  detection rules, the command line, errors and the differences from other readers.
+- [CHANGELOG](https://github.com/JaviLianes8/osc8link/blob/main/CHANGELOG.md): what changed
+  in each release.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/JaviLianes8/osc8link/blob/main/LICENSE).
 
 ## Links
 

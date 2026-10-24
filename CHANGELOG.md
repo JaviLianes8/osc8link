@@ -6,7 +6,45 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.2.0]
+## [1.0.0] - 2026-10-24
+
+First stable release. The public API is the ten names in `osc8link.__all__` with the
+signatures in the README, the `Link` fields, the `LinkError` type, the command line
+(`link`, `strip`, `list`, `supports`, exit codes 0, 1 and 2) and the reading and detection
+rules in the GUIDE. They change only in a new major version.
+
+### Added
+
+- `LinkError`, a `ValueError` subclass, raised by `link`, `auto_link` and `encode_url` for
+  arguments they cannot write safely. Code that catches `ValueError` keeps working.
+- `osc8link --version`.
+- A GUIDE with the reading rules, the detection rules, the command line, the errors and
+  the differences from VTE, xterm.js and `supports-hyperlinks`.
+- Every public name documents a runnable example; the examples run as tests.
+
+### Changed
+
+- `strip`, `contains_link` and `iter_links` take their text as a positional-only
+  argument (`strip(s=...)` no longer works) and raise `TypeError` naming the argument for
+  anything but a `str`. `iter_links` raises at the call, not at the first item.
+- A `terminator` or `fallback` that is not a `str` raises `TypeError` (a non-string
+  terminator raised `ValueError` before). Error messages quote at most 40 characters of
+  the caller's value.
+- DEL inside an OSC 8 sequence is ignored, as VTE ignores it: `ESC ] 8 ; ; http://a DEL b
+  ESC \` now reads as `http://ab` (0.2.0 kept the DEL in the URL).
+- Detection reads numbers in the environment exactly like JavaScript's `parseInt`, as
+  `supports-hyperlinks` does: leading Unicode white space such as U+00A0 or U+FEFF is
+  skipped and only ASCII digits count. `FORCE_HYPERLINK=" 0"` with a no-break space and a
+  `VTE_VERSION` or WezTerm date written in non-ASCII digits gave the opposite answer in
+  0.2.0. `FORCE_COLOR` turns detection off when its leading number is 0 (`00`, ` 0`), not
+  only for the exact text `0`.
+
+### Removed
+
+- The stray `osc8link.annotations` attribute.
+
+
+## [0.2.0] - 2026-10-13
 
 ### Added
 
@@ -38,7 +76,7 @@ All notable changes to this project are documented here. The format follows
   SUB or a C1 control cutting a sequence short. `strip` also removes malformed, cut-short
   and unterminated OSC 8 sequences, as a terminal hides them.
 
-## [0.1.0]
+## [0.1.0] - 2026-10-12
 
 - Add `link` to build an OSC 8 hyperlink from a url and text, with an optional `id`.
 - Add `strip` to remove OSC 8 sequences and keep the visible text.

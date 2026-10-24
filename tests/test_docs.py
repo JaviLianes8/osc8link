@@ -12,10 +12,35 @@ import osc8link
 
 ROOT = Path(__file__).resolve().parents[1]
 README = (ROOT / "README.md").read_text(encoding="utf-8")
+GUIDE = (ROOT / "GUIDE.md").read_text(encoding="utf-8")
+BADGE = (
+    "[![Lianes8 Certified](https://lianes8studio.com/certified/lianes8-certified-badge.svg)]"
+    "(https://lianes8studio.com/certified)"
+)
 
 
-def _python_blocks() -> list[str]:
-    return re.findall(r"```python\n(.*?)```", README, flags=re.DOTALL)
+def _python_blocks(text: str = README) -> list[str]:
+    return re.findall(r"```python\n(.*?)```", text, flags=re.DOTALL)
+
+
+def test_every_guide_example_runs_and_prints_its_comment() -> None:
+    blocks = _python_blocks(GUIDE)
+    assert len(blocks) == 2
+    for block in blocks:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            exec(compile(block, "GUIDE.md", "exec"), {"__name__": "guide"})
+        assert out.getvalue().splitlines() == _expected_output(block) != []
+
+
+def test_links_in_the_docs_are_absolute_and_the_badge_is_shown() -> None:
+    for text in (README, GUIDE):
+        prose = re.sub(r"```.*?```|`[^`]*`", "", text, flags=re.DOTALL)
+        for target in re.findall(r"\]\(([^)]+)\)", prose):
+            assert target.startswith("https://"), target
+    assert README.splitlines()[2] == BADGE
+    assert "https://github.com/JaviLianes8/osc8link/blob/main/GUIDE.md" in README
+    assert "https://github.com/JaviLianes8/osc8link/blob/main/CHANGELOG.md" in README
 
 
 def _expected_output(block: str) -> list[str]:
