@@ -136,10 +136,11 @@ then were killed. The table of all 56, with the test that kills each one, is in
 
 ## Gates (item 15)
 
-At c2600d3 on this PC (CPython 3.13.2), each command on its own, with every fetched source,
+At f844a2e on this PC (CPython 3.13.2), each command on its own, with every fetched source,
 the node oracles, Rich and `OSC8LINK_E2E=1`: `ruff format --check .`, `ruff check .`,
-`mypy --strict src`, `mypy --strict src tests` and `pytest` (551 passed, none skipped,
-doctests included) all exit 0. Without the fetched files the tests that need them skip
+`mypy --strict src`, `mypy --strict src tests` and `pytest` (846 passed, none skipped,
+doctests included) all exit 0. The code is unchanged since 63c1848, where the same run
+gave the same result. Without the fetched files the tests that need them skip
 cleanly, as in a fresh clone.
 
 ## QA lenses (item 19)
