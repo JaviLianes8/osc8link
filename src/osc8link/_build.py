@@ -7,7 +7,7 @@ from typing import Literal, TextIO
 from urllib.parse import quote
 
 from ._detect import supports_hyperlinks
-from ._errors import LinkError, quote_short, type_error
+from ._errors import LinkError, exact, quote_short
 
 Terminator = Literal["st", "bel"]
 
@@ -34,14 +34,15 @@ def link(url: str, text: str, *, id: str | None = None, terminator: Terminator =
 
     Raises LinkError (a ValueError) for an empty url, a url holding a lone surrogate, an id
     holding `:`, `;` or a character outside 32 to 126, text holding a control string, or an
-    unknown terminator; TypeError for an argument that is not a str.
+    unknown terminator; TypeError for an argument that is not a str. A str subclass is
+    read by its characters alone; its own __str__ or __format__ is never called.
 
     >>> link("https://example.com", "Example")
     '\\x1b]8;;https://example.com\\x1b\\\\Example\\x1b]8;;\\x1b\\\\'
     >>> link("https://example.com/a b", "x", id="ref-1", terminator="bel")
     '\\x1b]8;id=ref-1;https://example.com/a%20b\\x07x\\x1b]8;;\\x07'
     """
-    target, params, end = _parts(url, text, id, terminator)
+    target, text, params, end = _parts(url, text, id, terminator)
     return f"\x1b]8;{params};{target}{end}{text}\x1b]8;;{end}"
 
 
@@ -68,12 +69,11 @@ def auto_link(
     >>> auto_link("https://example.com", "docs", stream=io.StringIO(), fallback="{text}")
     'docs'
     """
-    target, params, end = _parts(url, text, id, terminator)
-    if not isinstance(fallback, str):
-        raise type_error("fallback", fallback)
+    target, text, params, end = _parts(url, text, id, terminator)
+    fallback = exact("fallback", fallback)
     if supports_hyperlinks(stream):
         return f"\x1b]8;{params};{target}{end}{text}\x1b]8;;{end}"
-    if text in (url, target):
+    if text in (exact("url", url), target):
         return text
     values = {"text": text, "url": target}
     return _PLACEHOLDER.sub(lambda match: values[match.group(1)], fallback)
@@ -90,34 +90,31 @@ def encode_url(url: str) -> str:
     >>> encode_url("file:///tmp/%25x")
     'file:///tmp/%25x'
     """
-    if not isinstance(url, str):
-        raise type_error("url", url)
+    url = exact("url", url)
     try:
         return quote(url, safe=_URL_SAFE)
     except UnicodeEncodeError:
         raise LinkError("url holds a lone surrogate, which has no UTF-8 encoding") from None
 
 
-def _parts(url: str, text: str, id: str | None, terminator: str) -> tuple[str, str, str]:
+def _parts(url: str, text: str, id: str | None, terminator: str) -> tuple[str, str, str, str]:
+    """Check the arguments; return the encoded url, the text, the parameters and the end."""
     target = encode_url(url)
     if not target:
         raise LinkError("url must not be empty: an OSC 8 sequence without one closes a link")
-    if not isinstance(text, str):
-        raise type_error("text", text)
+    text = exact("text", text)
     if _CONTROL_STRING.search(text):
         raise LinkError("text must not hold a control string such as an OSC 8 sequence")
-    if not isinstance(terminator, str):
-        raise type_error("terminator", terminator)
+    terminator = exact("terminator", terminator)
     if terminator not in _TERMINATORS:
         raise LinkError(f"terminator must be 'st' or 'bel', not {quote_short(terminator)}")
-    return target, _id_param(id), _TERMINATORS[terminator]
+    return target, text, _id_param(id), _TERMINATORS[terminator]
 
 
 def _id_param(id: str | None) -> str:
     if id is None:
         return ""
-    if not isinstance(id, str):
-        raise type_error("id", id)
+    id = exact("id", id)
     if any(not 0x20 <= ord(char) <= 0x7E or char in ":;" for char in id):
         raise LinkError("id must hold only characters 32 to 126 other than ':' and ';'")
     return f"id={id}" if id else ""

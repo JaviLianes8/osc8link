@@ -8,6 +8,8 @@ import sys
 from collections.abc import Mapping
 from typing import TextIO
 
+from ._errors import exact
+
 # The spec says a terminal cannot be asked, so this reads the environment, following the
 # rules of the `supports-hyperlinks` package plus the terminals that set a TERM of their own.
 _TERMS = frozenset({"alacritty", "xterm-kitty", "foot", "foot-extra", "xterm-ghostty", "wezterm"})
@@ -28,10 +30,13 @@ def supports_hyperlinks(
     stream defaults to sys.stdout, env to os.environ and platform to sys.platform.
     `FORCE_HYPERLINK=1` forces True and `FORCE_HYPERLINK=0` forces False. Otherwise the
     stream must be a TTY, `TERM` must not be `dumb` and colour must not be turned off with
-    `FORCE_COLOR=0` or `false`; then Windows Terminal, iTerm2 3.1+, WezTerm, VS Code 1.72+,
-    Ghostty, VTE 0.50.1+, Alacritty, kitty and foot are recognised. CI services give False.
-    Numbers in the environment are read the way JavaScript's parseInt reads them, as the
-    `supports-hyperlinks` package does.
+    `FORCE_COLOR=0` or `false`; then Windows Terminal (`WT_SESSION`, checked first) says
+    True, CI services and other Windows consoles say False, and iTerm2 3.1+, WezTerm, VS
+    Code 1.72+, Ghostty, VTE (except `VTE_VERSION` 5000 or 0.50.0), Alacritty, kitty and
+    foot are recognised. Numbers in the environment are read the way JavaScript's parseInt
+    reads them, as the `supports-hyperlinks` package does. An environment value that is not
+    a str counts as unset and a stream whose isatty fails is not a TTY; a platform that is
+    not a str raises TypeError.
 
     >>> import io
     >>> supports_hyperlinks(io.StringIO(), env={})
@@ -39,8 +44,9 @@ def supports_hyperlinks(
     >>> supports_hyperlinks(io.StringIO(), env={"FORCE_HYPERLINK": "1"})
     True
     """
-    env = os.environ if env is None else env
-    platform = sys.platform if platform is None else platform
+    platform = sys.platform if platform is None else exact("platform", platform)
+    values = os.environ if env is None else env
+    env = {key: str.__str__(value) for key, value in values.items() if isinstance(value, str)}
     force = env.get("FORCE_HYPERLINK", "")
     if force:
         return _leading_int(force) != 0
@@ -62,7 +68,8 @@ def supports_hyperlinks(
             return known
     vte = env.get("VTE_VERSION", "")
     if vte:
-        # 0.50.0 crashes on some links; VTE writes it as "5000".
+        # 0.50.0 crashes on some links. VTE writes it as "5000"; the package checks only
+        # "0.50.0", and other spellings are read as numbers, as the package reads them.
         if vte in ("5000", "0.50.0"):
             return False
         major, minor, _ = _version(vte)
@@ -109,6 +116,7 @@ def _leading_int(text: str) -> int | None:
 
 def _isatty(stream: TextIO | None) -> bool:
     try:
-        return stream is not None and stream.isatty()
-    except (AttributeError, ValueError, OSError):
+        return stream is not None and bool(stream.isatty())
+    except Exception:
+        # Whatever went wrong, a stream that cannot answer is not a terminal to write to.
         return False

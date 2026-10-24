@@ -61,3 +61,11 @@ def test_force_color_reads_a_leading_zero_as_off(value: str, expected: bool) -> 
 @pytest.mark.parametrize("value", ["", "1", "3", "true", "-1", "abc"])
 def test_other_force_color_values_leave_detection_on(value: str) -> None:
     assert check({"FORCE_COLOR": value, "TERM_PROGRAM": "ghostty"}) is True
+
+
+@pytest.mark.parametrize("ci", [{"CI": "1"}, {"TEAMCITY_VERSION": "9.1"}])
+def test_windows_terminal_wins_over_ci(ci: dict[str, str]) -> None:
+    # WT_SESSION is checked before CI, as in the package; the package says no here only
+    # because supports-color finds no colour under CI, the colour level this library skips.
+    assert check({"WT_SESSION": "x", "COLORTERM": "truecolor", **ci}) is True
+    assert check({"TERM_PROGRAM": "ghostty", **ci}) is False

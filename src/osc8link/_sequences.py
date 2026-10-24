@@ -6,21 +6,20 @@ import re
 from collections.abc import Iterator
 from dataclasses import dataclass
 
-from ._errors import type_error
-
-# Read the way VTE's parser reads it. OSC is ESC ] (C0 controls between the two are
-# executed and DEL is ignored, so they do not break the opener) or the C1 byte U+009D. ST is
-# ESC \ or U+009C, and XTerm's BEL is accepted everywhere. Inside the payload C0 controls
-# and DEL are ignored, while ESC, CAN, SUB and every C1 control abort the string, so a
-# sequence cut short by one of them (or by the end of the text) draws nothing and is not a
-# link. Unlike VTE, 7-bit and 8-bit openers and terminators may be mixed, as in xterm.js.
-_ABORT = r"\x07\x18\x1a\x1b\x80-\x9f"
-_SEQUENCE = re.compile(
-    r"(?:\x1b(?P<c0>[\x00-\x17\x19\x1c-\x1f\x7f]*)\]|\x9d)"
-    rf"0*8(?=[;{_ABORT}]|\Z)(?P<payload>[^{_ABORT}]*)(?P<end>\x1b\\|\x07|\x9c)?"
+from ._errors import exact
+from ._grammar import (
+    IGNORED,
+    KEEP_BETWEEN,
+    KEEP_IGNORED,
+    KEEP_NUMBER,
+    KEEP_PAYLOAD,
+    PREFIX,
+    SEQUENCE,
 )
-# C0 controls and DEL inside an OSC string are ignored by the terminal.
-_IGNORED = re.compile(r"[\x00-\x1f\x7f]")
+from ._screen import strip_part
+
+# Ignored controls are dropped from the payload before it is read.
+_IGNORED = re.compile(f"[{IGNORED}]")
 
 
 @dataclass(frozen=True)
@@ -51,18 +50,24 @@ class Link:
         yield self.text
 
 
+# Pickles and tracebacks name the public module, which does not move.
+Link.__module__ = "osc8link"
+
+
 def strip(s: str, /) -> str:
     """Return s with every OSC 8 sequence removed and the visible text kept.
 
     Sequences cut short (by ESC, CAN, SUB, a C1 control or the end of s) are removed up to
     the byte that cut them, as a terminal would hide them. Other escape sequences, such as
-    colours, stay. Raises TypeError when s is not a str.
+    colours, stay. When the opener of a removed sequence also ended an unfinished escape
+    sequence or control string before it, a CAN (U+0018, which terminals ignore) takes its
+    place, so the result never draws a link and stripping it again changes nothing. Raises
+    TypeError when s is not a str.
 
     >>> strip("see \\x1b]8;;https://example.com\\x1b\\\\docs\\x1b]8;;\\x1b\\\\ here")
     'see docs here'
     """
-    _check(s)
-    return _SEQUENCE.sub(lambda match: (match.group("c0") or "").replace("\x7f", ""), s)
+    return strip_part(_check(s))[0]
 
 
 def contains_link(s: str, /) -> bool:
@@ -76,8 +81,7 @@ def contains_link(s: str, /) -> bool:
     >>> contains_link("plain text"), contains_link("\\x1b]8;;\\x1b\\\\")
     (False, False)
     """
-    _check(s)
-    return any(_open(match) is not None for match in _SEQUENCE.finditer(s))
+    return any(_open(match) is not None for match in SEQUENCE.finditer(_check(s)))
 
 
 def iter_links(s: str, /) -> Iterator[Link]:
@@ -92,20 +96,18 @@ def iter_links(s: str, /) -> Iterator[Link]:
     >>> [(url, text) for url, text in iter_links(line)]
     [('https://a.test', 'A'), ('https://b.test', 'B')]
     """
-    _check(s)
-    return _links(s)
+    return _links(_check(s))
 
 
-def _check(s: object) -> None:
-    if not isinstance(s, str):
-        raise type_error("s", s)
+def _check(s: object) -> str:
+    return exact("s", s)
 
 
 def _links(s: str) -> Iterator[Link]:
     current: Link | None = None
     pieces: list[str] = []
     position = 0
-    for match in _SEQUENCE.finditer(s):
+    for match in SEQUENCE.finditer(s):
         pieces.append(s[position : match.start()])
         position = match.end()
         if _target(match) is None:
@@ -147,11 +149,22 @@ def _open(match: re.Match[str]) -> Link | None:
 def unfinished_tail(s: str) -> int:
     """Return where an OSC 8 sequence still open at the end of s starts, else len(s).
 
-    A stream filter holds that tail back until more input arrives. An open sequence has no
-    ESC or C1 control after its opener, so only the last one can start it.
+    A stream filter holds that tail back until more input arrives; an opener not yet
+    complete (ESC, ESC with controls, ESC ], a number without its 8) counts as open. An open
+    sequence has no ESC or C1 control after its opener, so only the last one can start it.
     """
     start = max(s.rfind("\x1b"), s.rfind("\x9d"))
-    match = _SEQUENCE.match(s, start) if start >= 0 else None
-    if match and match.group("end") is None and match.end() == len(s):
-        return start
-    return len(s)
+    if start < 0:
+        return len(s)
+    match = SEQUENCE.match(s, start)
+    if match is not None:
+        return start if match.group("end") is None and match.end() == len(s) else len(s)
+    return start if PREFIX.match(s, start) else len(s)
+
+
+def keep_pattern(tail: str) -> re.Pattern[str]:
+    """Return what text may follow an unfinished tail and leave it unfinished the same way."""
+    match = SEQUENCE.match(tail)
+    if match is not None:
+        return KEEP_PAYLOAD if _IGNORED.sub("", match.group("payload")) else KEEP_IGNORED
+    return KEEP_NUMBER if "]" in tail or tail.startswith("\x9d") else KEEP_BETWEEN

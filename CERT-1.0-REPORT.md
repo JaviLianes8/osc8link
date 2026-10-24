@@ -200,7 +200,40 @@ cleanly, as in a fresh clone.
 
 ## QA lenses (item 19)
 
-Pending: run by the maintainer's reviewers after this preparation.
+### Round 1 (reviewed at 3ac1c24)
+
+Five lenses (a API and docs, b correctness and ground truth, c adversarial, d packaging
+and e2e, e contract strength) reported 24 findings. Every one is fixed; none is disputed.
+Each behaviour finding first got a contract that failed on 3ac1c24 (155 failures in the
+in-process tests, 7 in the command line tests run against the old source, and the new
+stream tests that need the new helpers), then the fix. The three surviving mutants of lens
+e (C09, D09, C01), a mutant that drops the CAN and one that always rescans the held tail
+were each applied to a copy of the fixed tree and are killed by the new tests.
+
+| Finding | Fix | Contract |
+| --- | --- | --- |
+| a-F1, c-C5 TypeError promise and odd environment values | `supports_hyperlinks` treats a non-str environment value as unset, says no for any `isatty` failure, raises `TypeError` for a non-str `platform`; README and GUIDE say exactly which functions raise | test_errors: non-string values, platform, broken isatty |
+| a-F2, c-C6 raw 8-bit bytes from `list` | `list` escapes U+DC80 to U+DCFF (undecodable bytes) as `\xNN` | test_cli::test_list_escapes_bytes_that_are_not_utf8 |
+| a-F3 VTE 0.50.0 spellings | documented: only the exact values `5000` and `0.50.0` say no; other spellings are read as numbers, as `supports-hyperlinks` reads them | test_detect::test_only_the_exact_spellings_of_vte_0_50_0_say_no |
+| a-F4 "the first four" | GUIDE: the first three (iTerm.app, WezTerm, vscode) | test_detect: the three below their versions fall through to nothing |
+| a-F5 400 environments "agree" | GUIDE states what is compared and what is not | docs only |
+| a-F6 upgrade section | GUIDE lists the terminator and `iter_links` type changes and the new reading changes | docs only |
+| a-F7 private module paths | `Link.__module__` and `LinkError.__module__` are `osc8link` | test_contract::test_public_classes_name_the_public_module |
+| a-F8 "64 KiB" | GUIDE: 65,536 characters, not bytes | test_hold: exact output past the limit |
+| a-F9 dev extras comment | requirements-dev.txt lists all seven extras | docs only |
+| b-F1 controls inside the command number | C0 controls (not BEL, CAN, SUB, ESC) and DEL may sit anywhere in `0*8` and before the `;`, for both openers | test_terminal_parser (80 cases), test_vte_parser::test_controls_inside_the_command_number_follow_vte, fuzz reference |
+| b-F2 VTE length limits | documented as a deliberate difference that follows xterm.js; GUIDE ground-truth paragraph corrected (81 links read, 78 runs in VTE) | test_vte_parser::test_vte_length_limits_are_a_documented_difference, test_oracle_xterm: URIs of 2084 to 100,000 characters and a 251-character id read as xterm.js reads them |
+| b-F3, c-C2 opener split over lines | the stream filter also holds an unfinished opener (ESC, ESC and controls, `ESC ]`, `ESC ] 0`, U+009D) | test_hold (9 split shapes, differential test), test_cli::test_strip_holds_an_opener_split_by_a_line_break |
+| b-F4, c-C1 strip joining both sides | a CAN replaces a removed sequence whose opener ended an unfinished escape or control string; `strip` is idempotent and never returns a link | test_strip_safety (exact cases, 80,000 seeded texts), fuzz reference models the parser state |
+| b-F5 "CI services give False" | docstring: WT_SESSION is checked first; GUIDE notes the package's CI colour check | test_detect_differences::test_windows_terminal_wins_over_ci |
+| c-C3 quadratic hold | a held tail is rescanned only when a line could change it | test_hold: characters scanned bounded by 4x the input; hostile input about as fast as plain text |
+| c-C4 str subclasses | every str argument is copied with `str.__str__` after the type check and only the copy is read and written | test_build: lying `__str__`/`__format__`/`__iter__`, `(str, Enum)` |
+| d-D1 closed stdin or stdout | `link`, `strip`, `list` exit 2 with `osc8link: stdout is closed` (or stdin) | test_cli::test_a_missing_standard_stream_exits_2_with_a_message (5 cases) |
+| e-F1 hold limit untested | exact output past the limit and just under it, linear-time guard | test_hold |
+| e-F2 WezTerm 20200620 boundary | pinned true at 20200620, false at 20200619 | test_detect |
+| e-F3 explicitly empty TEXT | pinned; README and GUIDE say the default applies only when TEXT is omitted | test_cli::test_an_explicitly_empty_text_is_kept_empty |
+
+Every behaviour change is in the CHANGELOG 1.0.0 section. Fix commit: see below.
 
 ## Independent review (item 16)
 

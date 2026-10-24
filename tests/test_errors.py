@@ -102,3 +102,36 @@ def test_detection_never_raises_on_odd_environment_values() -> None:
         for key in ("FORCE_HYPERLINK", "FORCE_COLOR", "TERM_PROGRAM_VERSION", "VTE_VERSION"):
             env = {key: value, "TERM_PROGRAM": "iTerm.app"}
             assert isinstance(supports_hyperlinks(io.StringIO(), env=env), bool)
+
+
+@pytest.mark.parametrize("value", [1, b"1", None, 0.5, ["1"]])
+@pytest.mark.parametrize("key", ["FORCE_HYPERLINK", "FORCE_COLOR", "TERM", "VTE_VERSION", "CI"])
+def test_detection_treats_a_non_string_environment_value_as_unset(key: str, value: object) -> None:
+    env: Any = {key: value, "TERM_PROGRAM": "ghostty"}
+    assert supports_hyperlinks(io.StringIO(), env=env, platform="linux") is False
+    assert supports_hyperlinks(_Tty(), env=env, platform="linux") is True
+
+
+@pytest.mark.parametrize("platform", [1, b"linux", ["linux"]])
+def test_detection_rejects_a_platform_that_is_not_a_str(platform: object) -> None:
+    with pytest.raises(TypeError, match=r"^platform must be a str, not \w+$"):
+        supports_hyperlinks(io.StringIO(), env={}, platform=platform)  # type: ignore[arg-type]
+
+
+class _Tty(io.StringIO):
+    def isatty(self) -> bool:
+        return True
+
+
+class _Raises:
+    def isatty(self) -> bool:
+        raise RuntimeError("boom")
+
+
+class _NotCallable:
+    isatty = None
+
+
+@pytest.mark.parametrize("stream", [_Raises(), _NotCallable()])
+def test_detection_says_no_whatever_a_broken_isatty_raises(stream: Any) -> None:
+    assert supports_hyperlinks(stream, env={"TERM": "alacritty"}, platform="linux") is False

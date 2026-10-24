@@ -122,3 +122,26 @@ def test_the_osc8_handler_closes_on_an_empty_uri_and_reads_the_first_id() -> Non
     assert list(iter_links(text)) == [
         Link("http://a", "A", "a", (("foo", "1"), ("id", "a"), ("id", "b")))
     ]
+
+
+@pytest.mark.parametrize("code", [*range(0x20), 0x7F])
+def test_controls_inside_the_command_number_follow_vte(vte: str, code: int) -> None:
+    # VTE drops an ignored control before it collects the string, so the number it then
+    # reads holds no trace of it, wherever it sat.
+    kind = _classify(vte, code)
+    char = chr(code)
+    for text in (f"\x1b]{char}8;;http://a\x1b\\X", f"\x1b]0{char}8{char};;http://a\x1b\\X"):
+        expected = [Link("http://a", "X")] if kind == "ignore" else []
+        assert list(iter_links(text)) == expected, (code, kind)
+
+
+def test_vte_length_limits_are_a_documented_difference() -> None:
+    # VTE treats a URI over VTE_HYPERLINK_URI_LENGTH_MAX (2083) bytes as a close and drops an
+    # id over VTE_HYPERLINK_ID_LENGTH_MAX (250); xterm.js has no such limit and neither does
+    # this library (see test_oracle_xterm.py and the GUIDE).
+    handler = _block(read_upstream("vte-vteseq.cc"), "Terminal::set_current_hyperlink(", "\n}\n")
+    assert "if (len > 3 + VTE_HYPERLINK_ID_LENGTH_MAX) {" in handler
+    assert "if (len > 0 && len <= VTE_HYPERLINK_URI_LENGTH_MAX) {" in handler
+    long_url = "http://a/" + "h" * 2084
+    text = f"\x1b]8;id={'i' * 251};{long_url}\x1b\\X"
+    assert list(iter_links(text)) == [Link(long_url, "X", "i" * 251, (("id", "i" * 251),))]

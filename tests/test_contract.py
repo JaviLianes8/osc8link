@@ -6,6 +6,7 @@ import dataclasses
 import doctest
 import importlib.resources
 import inspect
+import pickle
 import re
 import types
 from pathlib import Path
@@ -76,6 +77,20 @@ def test_link_fields_and_error_type_are_fixed() -> None:
     assert osc8link.Link.__dataclass_params__.frozen  # type: ignore[attr-defined]
     assert issubclass(osc8link.LinkError, ValueError)
     assert osc8link.Terminator.__args__ == ("st", "bel")  # type: ignore[attr-defined]
+
+
+def test_public_classes_name_the_public_module() -> None:
+    # Pickles bind to __module__, so they must not name a private module that may move.
+    for cls in (osc8link.Link, osc8link.LinkError):
+        assert cls.__module__ == "osc8link"
+        assert cls.__qualname__ == cls.__name__
+    found = osc8link.Link("https://a.test", "A", "x", (("id", "x"),))
+    data = pickle.dumps(found)
+    assert b"osc8link" in data and b"_sequences" not in data
+    assert pickle.loads(data) == found
+    error = pickle.loads(pickle.dumps(osc8link.LinkError("bad id")))
+    assert type(error) is osc8link.LinkError and str(error) == "bad id"
+    assert b"_errors" not in pickle.dumps(osc8link.LinkError("bad id"))
 
 
 def test_every_public_name_documents_a_runnable_example() -> None:

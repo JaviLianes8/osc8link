@@ -38,6 +38,29 @@ rules in the GUIDE. They change only in a new major version.
   `VTE_VERSION` or WezTerm date written in non-ASCII digits gave the opposite answer in
   0.2.0. `FORCE_COLOR` turns detection off when its leading number is 0 (`00`, ` 0`), not
   only for the exact text `0`.
+- C0 controls and DEL inside the command number (`ESC ] 8 SOH ; ; URI`, `ESC ] 0 LF 8`) are
+  ignored, as VTE and xterm.js ignore them: such a sequence is a link, which 0.2.0 missed
+  (and left whole in the output of `strip`).
+- `strip` leaves a CAN (U+0018) where a removed sequence had cut short an unfinished escape
+  sequence or control string (`ESC [ 1`, a lone ESC, `ESC P`), so the text after it cannot
+  complete that escape: the result never draws a link and stripping it again changes
+  nothing. 0.2.0 could build a new link out of the text on both sides.
+- `osc8link strip` holds back an opener split over two lines (`ESC`, line break, `]8;;`) and
+  holds an open sequence in linear time (0.2.0 rescanned it for every line, which was
+  quadratic); within the 65,536-character hold limit it gives exactly what `strip` gives on
+  the whole input.
+- `osc8link list` escapes bytes that are not UTF-8 as `\xNN` (0.2.0 wrote them raw,
+  including the 8-bit C1 controls 0x80 to 0x9F).
+- `osc8link link`, `strip` and `list` started without the stdin or stdout they need print a
+  one-line message and exit 2 (0.2.0 ended with a traceback and exit code 1).
+- A `str` subclass passed to any function is read by its characters alone: its own
+  `__str__`, `__format__` or `__iter__` is never called, so a `(str, Enum)` member is
+  written as its value and the checked text is the written text.
+- `supports_hyperlinks` treats an environment value that is not a `str` as unset, says no
+  for a stream whose `isatty` raises anything, and raises `TypeError` for a `platform` that
+  is not a `str` (0.2.0 raised from inside `re` or returned an answer).
+- `Link` and `LinkError` report `osc8link` as their module, so pickles and tracebacks name
+  the public module rather than a private one.
 
 ### Removed
 

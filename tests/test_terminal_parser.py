@@ -85,3 +85,25 @@ def test_adversarial_input_is_read_in_linear_time(attack: str) -> None:
     contains_link(text)
     list(iter_links(text))
     assert time.perf_counter() - started < 3
+
+
+NUMBER_GAPS = ["\x00", "\x01", "\x05", "\n", "\r", "\x17", "\x19", "\x1c", "\x1f", "\x7f"]
+
+
+@pytest.mark.parametrize("gap", NUMBER_GAPS)
+@pytest.mark.parametrize("opener", [f"{ESC}]", "\x9d"])
+@pytest.mark.parametrize("number", ["{g}8", "0{g}08", "8{g}", "{g}0{g}8{g}"])
+def test_ignored_controls_inside_the_command_number_still_make_a_link(
+    gap: str, opener: str, number: str
+) -> None:
+    end = "\x9c" if opener == "\x9d" else ST
+    text = f"{opener}{number.format(g=gap)};;https://x.test/{end}T{ESC}]8;;{ST}"
+    assert list(iter_links(text)) == [Link("https://x.test/", "T")]
+    assert contains_link(text)
+    assert strip(text) == "T"
+
+
+@pytest.mark.parametrize("gap", ["\x07", "\x18", "\x1a", "\x9c", "x", "1"])
+def test_other_characters_inside_the_command_number_are_not_ignored(gap: str) -> None:
+    text = f"{ESC}]{gap}8;;https://x.test/{ST}T"
+    assert not contains_link(text)

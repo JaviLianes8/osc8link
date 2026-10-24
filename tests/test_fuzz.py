@@ -17,6 +17,9 @@ from osc8link._cli import _strip_stream
 
 ABORT = {"\x07", "\x18", "\x1a", "\x1b", *map(chr, range(0x80, 0xA0))}
 BETWEEN = {*map(chr, range(0x18)), "\x19", *map(chr, range(0x1C, 0x20)), "\x7f"}
+IGNORED = BETWEEN - {"\x07"}
+STRINGS = {0x9B: "csi", 0x9D: "osc", 0x90: "string", 0x98: "string", 0x9E: "string"}
+STRINGS[0x9F] = "string"
 ALPHABET = ["\x1b", "]", "\x9d", "8", "0", ";", ":", "=", "i", "d", "\\", "\x07", "\x9c"]
 ALPHABET += ["\x00", "\x18", "\x1a", "\x7f", "\x85", "a", "b", "\n", " ", chr(0x100)]
 # Whole pieces make complete sequences common enough to matter.
@@ -35,9 +38,14 @@ def _sequence_at(s: str, i: int) -> tuple[int, str, str, bool] | None:
         j += 1
     elif s[i] != "\x9d":
         return None
-    while j < len(s) and s[j] == "0":
+    while j < len(s) and (s[j] == "0" or s[j] in IGNORED):
         j += 1
-    if j == len(s) or s[j] != "8" or (j + 1 < len(s) and s[j + 1] != ";" and s[j + 1] not in ABORT):
+    if j == len(s) or s[j] != "8":
+        return None
+    k = j + 1
+    while k < len(s) and s[k] in IGNORED:
+        k += 1
+    if k < len(s) and s[k] != ";" and s[k] not in ABORT:
         return None
     start = end = j + 1
     while end < len(s) and s[end] not in ABORT:
@@ -50,20 +58,46 @@ def _sequence_at(s: str, i: int) -> tuple[int, str, str, bool] | None:
     return end, kept, payload, False
 
 
+def _after(state: str, char: str) -> str:
+    """The parser state after char: ground, esc, esc-int, csi, osc or string."""
+    code = ord(char)
+    if char in "\x18\x1a":
+        return "ground"
+    if char == "\x1b":
+        return "esc"
+    if 0x80 <= code <= 0x9F:
+        return STRINGS.get(code, "ground")
+    if state in ("ground", "osc", "string"):
+        return "ground" if state == "osc" and char == "\x07" else state
+    if code < 0x20 or code == 0x7F:
+        return state
+    if state == "esc":
+        named = {"[": "csi", "]": "osc", "P": "string", "X": "string", "^": "string"}
+        named["_"] = "string"
+        return named.get(char, "esc-int" if 0x20 <= code <= 0x2F else "ground")
+    if state == "esc-int":
+        return state if 0x20 <= code <= 0x2F else "ground"
+    return state if 0x20 <= code <= 0x3F else "ground"
+
+
 def reference(s: str) -> tuple[str, list[Link], bool]:
     visible, links, pieces = "", [], ""
     opened = False
     current: tuple[str, str | None, tuple[tuple[str, str], ...]] | None = None
+    state = "ground"
     i = 0
     while i < len(s):
         found = _sequence_at(s, i)
         if found is None:
             visible += s[i]
             pieces += s[i]
+            state = _after(state, s[i])
             i += 1
             continue
         i, kept, payload, terminated = found
-        visible += kept.replace("\x7f", "")
+        # strip cancels a sequence the removed opener had ended, see test_strip_safety.py.
+        visible += ("\x18" if state != "ground" else "") + kept.replace("\x7f", "")
+        state = "ground"
         clean = "".join(char for char in payload if char >= " " and char != "\x7f")
         if not terminated or ";" not in clean[1:]:
             continue
@@ -131,7 +165,9 @@ def test_built_links_read_back_exactly(seed: int) -> None:
         assert list(iter_links("a" + built + "b")) == [
             Link(encode_url(url), text, ident or None, params)
         ]
-        assert strip(built) == text
+        # Text that ends inside an escape sequence gets the CAN that the closing ESC stood for.
+        assert strip(built) == reference(built)[0]
+        assert strip(built) in (text, text + "\x18")
 
 
 @pytest.mark.parametrize("seed", range(3))

@@ -10,7 +10,9 @@ This library reads text the way VTE does (see test_vte_parser.py). Three shapes 
 xterm.js differs from VTE are kept out of the generator and pinned below: an OSC 8 with
 parameters but no URI (VTE closes the link, xterm.js keeps it open), DEL inside the URI
 (VTE drops it, xterm.js keeps it) and ESC followed by anything but a backslash inside the
-sequence (VTE drops the sequence, xterm.js applies it).
+sequence (VTE drops the sequence, xterm.js applies it). A fourth is pinned the other way:
+VTE's length limits (a URI over 2083 bytes, an id over 250 bytes, an OSC over 4096 code
+points), which xterm.js and this library do not apply.
 """
 
 from __future__ import annotations
@@ -128,3 +130,17 @@ def test_an_escape_inside_the_sequence_drops_it_unlike_xterm_js() -> None:
     text = f"\x1b]8;;http://o\x1bx{A}"
     assert list(iter_links(text)) == []
     assert _terminal(text) == [(A, "http://o")]
+
+
+@pytest.mark.parametrize("size", [2084, 5000, 100_000])
+def test_a_uri_longer_than_vte_allows_is_read_like_xterm_js(size: int) -> None:
+    url = "http://a/" + "h" * size
+    text = f"\x1b]8;;{url}\x1b\\{A}"
+    assert [found.url for found in iter_links(text)] == [url]
+    assert _terminal(text) == [(A, url)]
+
+
+def test_an_id_longer_than_vte_allows_is_read_like_xterm_js() -> None:
+    text = f"\x1b]8;id={'i' * 251};http://a/\x1b\\{A}"
+    assert [found.id for found in iter_links(text)] == ["i" * 251]
+    assert _terminal(text) == [(A, "http://a/")]

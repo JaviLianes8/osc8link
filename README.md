@@ -104,11 +104,14 @@ print(list(iter_links(switched)) == [Link("https://a.test", "A"), Link("https://
 ```
 
 Text is read the way VTE, the terminal the spec was written for, reads it: C0 controls
-between ESC and `]` do not break the opener, C0 controls and DEL inside the sequence are
-ignored, and ESC (unless followed by a backslash), CAN, SUB or a C1 control cut it short.
-A cut-short or unterminated sequence is not a link, and `strip` removes it up to the
-character that cut it, as a terminal hides it. `strip` removes OSC 8 sequences only:
-colours and other escapes stay, also inside `Link.text`.
+between ESC and `]` do not break the opener, C0 controls and DEL inside the sequence
+(the `8` included) are ignored, and ESC (unless followed by a backslash), CAN, SUB or a C1
+control cut it short. A cut-short or unterminated sequence is not a link, and `strip`
+removes it up to the character that cut it, as a terminal hides it. `strip` removes OSC 8
+sequences only: colours and other escapes stay, also inside `Link.text`. Where a removed
+sequence had cut short an unfinished escape before it, `strip` leaves a CAN (U+0018,
+which terminals ignore) in its place, so the text after it cannot complete that escape:
+the result never draws a link and stripping it again changes nothing.
 
 ### Command line
 
@@ -120,12 +123,14 @@ https://a.test	A
 $ osc8link supports && echo "links work here"
 ```
 
-`link` prints one hyperlink (the text defaults to the URL, `--bel` switches the
-terminator). `strip` and `list` read UTF-8 from stdin and pass any other byte through.
-`strip` works line by line, so it can follow a growing log (`tail -f app.log | osc8link
-strip`). `list` shows control characters and backslashes escaped (`\x1b`, `\t`, `\\`), so
-its output is safe to print and splits cleanly on tabs. `supports` answers through the exit
-code: 0 yes, 1 no. Bad input exits 2. `osc8link --version` and `python -m osc8link` work too.
+`link` prints one hyperlink (when TEXT is omitted it is the URL; an empty TEXT stays
+empty; `--bel` switches the terminator). `strip` and `list` read UTF-8 from stdin and
+`strip` passes any other byte through. `strip` works line by line, so it can follow a
+growing log (`tail -f app.log | osc8link strip`). `list` shows control characters,
+backslashes and bytes that are not UTF-8 escaped (`\x1b`, `\t`, `\\`, `\xff`), so its
+output is safe to print and splits cleanly on tabs. `supports` answers through the exit
+code: 0 yes, 1 no. Bad input, or a missing stdin or stdout, exits 2. `osc8link --version`
+and `python -m osc8link` work too.
 
 ## API
 
@@ -145,8 +150,12 @@ code: 0 yes, 1 no. Bad input exits 2. `osc8link --version` and `python -m osc8li
 `link`, `auto_link` and `encode_url` raise `LinkError` for an empty URL (an OSC 8 without
 one closes a link), a URL holding a lone surrogate, an `id` holding `:`, `;` or a
 character outside 32 to 126, text holding a control string (OSC, DCS, SOS, PM or APC, in
-7-bit or 8-bit form) and an unknown terminator. Every function raises `TypeError` for an
-argument that is not a `str`. Messages name the argument and quote at most 40 characters.
+7-bit or 8-bit form) and an unknown terminator. These three and `strip`, `contains_link`
+and `iter_links` raise `TypeError` for an argument that is not a `str` (a `str` subclass is
+read by its characters alone). Messages name the argument and quote at most 40
+characters. `supports_hyperlinks` raises `TypeError` only for a `platform` that is not a
+`str`; it treats an environment value that is not a `str` as unset and a stream whose
+`isatty` fails as not a terminal.
 
 ## Why
 
@@ -166,7 +175,8 @@ The test suite checks the library against sources fetched and pinned by hash in
 
 - the [OSC 8 specification](https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda)
   by Egmont Koblinger and the [VTE hyperlink test file](https://gitlab.gnome.org/GNOME/vte/-/raw/master/perf/hyperlink-demo.txt)
-  it links to (all 81 links read correctly);
+  it links to (all 81 links read; VTE's length limits on URIs and ids are a documented
+  difference);
 - VTE's parser source: how every character up to U+00A0 behaves inside a sequence is read
   out of its state machine and compared with this library;
 - xterm.js (`@xterm/headless`) run as a terminal on thousands of seeded random texts, every

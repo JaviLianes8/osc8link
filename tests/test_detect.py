@@ -31,6 +31,7 @@ def check(env: dict[str, str], *, tty: bool = True, platform: str = "linux") -> 
         {"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "3.1.0"},
         {"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "4.0"},
         {"TERM_PROGRAM": "WezTerm", "TERM_PROGRAM_VERSION": "20240203-110809-5046fc22"},
+        {"TERM_PROGRAM": "WezTerm", "TERM_PROGRAM_VERSION": "20200620-160318-e00b076c"},
         {"TERM_PROGRAM": "WezTerm", "TERM_PROGRAM_VERSION": "0-unstable-2021-01-01"},
         {"TERM_PROGRAM": "vscode", "TERM_PROGRAM_VERSION": "1.72.0"},
         {"TERM_PROGRAM": "vscode", "TERM_PROGRAM_VERSION": "2.0.1"},
@@ -63,6 +64,7 @@ def test_known_terminals_are_recognised(env: dict[str, str]) -> None:
         {"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "2.9"},
         {"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "nightly"},
         {"TERM_PROGRAM": "WezTerm", "TERM_PROGRAM_VERSION": "20200619-000000-x"},
+        {"TERM_PROGRAM": "WezTerm", "TERM_PROGRAM_VERSION": "20200619-235959-e00b076c"},
         {"TERM_PROGRAM": "WezTerm", "TERM_PROGRAM_VERSION": "0-unstable-2020-06-19"},
         {"TERM_PROGRAM": "vscode", "TERM_PROGRAM_VERSION": "1.71.2"},
         {"TERM_PROGRAM": "Apple_Terminal", "TERM_PROGRAM_VERSION": "455"},
@@ -70,6 +72,9 @@ def test_known_terminals_are_recognised(env: dict[str, str]) -> None:
         {"VTE_VERSION": "0.50.0"},
         {"VTE_VERSION": "4803"},
         {"TERM_PROGRAM": "ghostty", "CI": "true"},
+        {"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "3.0", "TERM": "xterm-kitty"},
+        {"TERM_PROGRAM": "WezTerm", "TERM_PROGRAM_VERSION": "20190101", "TERM": "xterm-kitty"},
+        {"TERM_PROGRAM": "vscode", "TERM_PROGRAM_VERSION": "1.50", "TERM": "xterm-kitty"},
         {"TERM_PROGRAM": "ghostty", "TEAMCITY_VERSION": "2024.1"},
         {"TERM_PROGRAM": "ghostty", "TERM": "dumb"},
         {"TERM_PROGRAM": "ghostty", "FORCE_COLOR": "0"},
@@ -158,3 +163,13 @@ def test_a_stream_whose_isatty_fails_is_not_a_terminal() -> None:
 def test_signs_and_long_zero_runs_read_like_parse_int() -> None:
     assert check({"FORCE_HYPERLINK": "0" * 5000}) is False
     assert check({"TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "-5.0"}) is False
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("5000", False), ("0.50.0", False), ("0.50", True), ("0.50.00", True), ("05000", True)],
+)
+def test_only_the_exact_spellings_of_vte_0_50_0_say_no(value: str, expected: bool) -> None:
+    # As in the package, other spellings are read as numbers: "0.50" is 0.50 and "05000",
+    # which is not the packed form, is major version 5000.
+    assert check({"VTE_VERSION": value}) is expected

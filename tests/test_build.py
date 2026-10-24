@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import enum
+import io
 import random
+from typing import Any
 
 import pytest
 
-from osc8link import Link, encode_url, iter_links, link, strip
+from osc8link import Link, auto_link, encode_url, iter_links, link, strip
 
 ESC = "\x1b"
 ST = "\x1b\\"
@@ -133,3 +136,46 @@ def test_a_non_string_id_is_a_type_error() -> None:
 
 def test_built_links_strip_back_to_their_text() -> None:
     assert strip("before " + link("https://a.test", "A", id="x") + " after") == "before A after"
+
+
+class _Lies(str):
+    """A str whose __str__, __format__ and __iter__ disagree with its characters."""
+
+    def __str__(self) -> str:
+        return "\x1b]8;;https://evil.test\x1b\x5c"
+
+    def __format__(self, spec: str) -> str:
+        return str(self)
+
+    def __iter__(self):  # type: ignore[no-untyped-def]
+        return iter("")
+
+
+class _Colour(str, enum.Enum):
+    RED = "red"
+
+
+@pytest.mark.parametrize("field", ["url", "text", "id", "terminator", "fallback"])
+def test_a_str_subclass_is_written_as_its_characters(field: str) -> None:
+    plain: dict[str, Any] = {"url": "https://ok.test", "text": "safe", "id": "a"}
+    plain["terminator"] = "st"
+    tricky = dict(plain)
+    if field != "fallback":
+        tricky[field] = _Lies(plain[field])
+    pipe = io.StringIO()
+    fallback = _Lies("{text} ({url})") if field == "fallback" else "{text} ({url})"
+    assert link(**tricky) == link(**plain)
+    assert auto_link(**tricky, stream=pipe, fallback=fallback) == auto_link(**plain, stream=pipe)
+
+
+def test_an_id_that_hides_its_characters_from_iteration_is_still_checked() -> None:
+    with pytest.raises(ValueError, match="id must hold"):
+        link("https://ok.test", "t", id=_Lies("a;b\x1b]8;;https://evil.test\x1b\x5c"))
+
+
+def test_a_str_enum_member_is_written_as_its_value() -> None:
+    assert link("https://ok.test", _Colour.RED) == link("https://ok.test", "red")
+    assert (
+        auto_link("https://ok.test", _Colour.RED, stream=io.StringIO()) == "red (https://ok.test)"
+    )
+    assert strip(_Colour.RED) == "red" and type(strip(_Colour.RED)) is str
