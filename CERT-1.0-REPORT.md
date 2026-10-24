@@ -238,6 +238,56 @@ commit on this PC (CPython 3.13.2, every fetched source, the node oracles, Rich 
 `OSC8LINK_E2E=1`): `ruff format --check .`, `ruff check .`, `mypy --strict src`,
 `mypy --strict src tests` and `pytest` (782 passed, none skipped) each exit 0.
 
+### Round 2 (reviewed at d444d16)
+
+Every round 1 finding was re-checked as fixed by its lens. Lenses b, c, d and e
+reported 7 new findings. Every one is fixed; none is disputed. The behaviour
+findings first got contracts that fail on d444d16: 44 failures when the new and changed
+test files run against the d444d16 source, then the fix.
+
+| Finding | Fix | Contract |
+| --- | --- | --- |
+| b-N1 SCI before a removed sequence | `strip` treats VTE's single character introducer (`ESC Z`, controls and DEL allowed between, or U+009A, followed only by DEL) as unfinished and leaves a CAN after it, so it cannot swallow the first visible character; GUIDE and CHANGELOG list it | test_strip_safety (4 SCI cases, 5 finished SCI cases), test_cli_edges::test_strip_cancels_a_single_character_introducer (both forms by subprocess), fuzz reference models SCI |
+| c-N1 hold limit counted on the whole chunk | the limit counts the held text only (`len(pending) - cut`), so a long line no longer stops a short opener from being held; held text that reaches the limit is let go with a CAN after an opener prefix, so later lines cannot complete it; GUIDE says exactly what is let go | test_hold_limit: long lines (65,533 to 131,072 characters) ending in ESC, ESC CR LF, `ESC ]`, `ESC ]` CR LF, U+009D, ESC ENQ; an opener held to exactly the limit; test_cli_edges by subprocess |
+| d-D2 messages on stdout when stderr is closed | `main` replaces a missing stderr with a sink while it runs and puts None back, so neither argparse nor the error path falls back to stdout; a usage error exits 2 on 3.10 too; README, GUIDE, CHANGELOG | test_cli_edges::test_without_stderr_errors_exit_2_and_never_reach_stdout (5 cases), good command still writes stdout, stderr restored |
+| e-G1 CAN guard unpinned for CSI with BEL and APC | contracts only | test_strip_safety: CSI holding BEL (7-bit and 8-bit), APC (`ESC _`, U+009F), SOS, PM; APC and SCI added to both fuzz alphabets, a CSI holding BEL to the reference fuzz |
+| e-G2 exact 65,536 boundary | contracts only | test_hold_limit::test_the_hold_limit_is_exactly_65_536_characters: 65,535 held whole, 65,536 let go, through the fast path and the rescan path |
+| e-G3 when held lines go out | contracts only; GUIDE says a held line goes out as soon as its sequence ends or breaks | test_hold_limit::test_a_held_line_goes_out_as_soon_as_its_sequence_ends_or_breaks (lines read before each chunk) |
+| e-G4 str subclass environment values | contracts only | test_errors::test_detection_reads_a_str_subclass_value_by_its_characters |
+
+The lens e survivors and mutants of the new code, each applied alone to a copy of the
+fixed tree and run against the whole suite with `-x` (fetched sources, node oracles
+present), are all killed:
+
+| Mutant | Killed by |
+| --- | --- |
+| N19 BEL no longer kept inside a CSI | test_fuzz::test_the_library_reads_like_the_reference |
+| N21 APC not a control string | test_fuzz::test_the_library_reads_like_the_reference |
+| N08 fast path `<` to `<=` | test_cli_edges::test_strip_cancels_an_opener_held_past_the_limit |
+| C09c let-go check `<` to `<=` | test_cli_edges::test_strip_cancels_an_opener_held_past_the_limit |
+| N30 `KEEP_PAYLOAD` takes anything | test_hold_limit::test_a_held_line_goes_out_as_soon_as_its_sequence_ends_or_breaks |
+| N31 `keep_pattern` always `KEEP_PAYLOAD` | test_hold::test_an_opener_that_cannot_be_completed_any_more_is_let_go |
+| N32 a C1 tail keeps controls | test_hold_limit::test_a_held_line_goes_out_as_soon_as_its_sequence_ends_or_breaks |
+| N43 environment read through the subclass | test_errors::test_detection_reads_a_str_subclass_value_by_its_characters |
+| S1 SCI not unfinished | test_cli_edges::test_strip_cancels_a_single_character_introducer |
+| S2 U+009A not SCI | test_cli_edges::test_strip_cancels_a_single_character_introducer |
+| S3 DEL ends SCI | test_fuzz::test_the_library_reads_like_the_reference |
+| S4 controls between ESC and `Z` break SCI | test_fuzz::test_the_library_reads_like_the_reference |
+| S5 no CAN after an opener let go | test_cli_edges::test_strip_cancels_an_opener_held_past_the_limit |
+| S6 limit counted on the whole chunk again | test_cli_edges::test_strip_holds_an_opener_after_a_line_past_the_limit |
+| S7 missing stderr not replaced | test_cli_edges::test_without_stderr_errors_exit_2_and_never_reach_stdout |
+
+Every behaviour change is in the CHANGELOG 1.0.0 section. Fix commit: 89b1a0c. At that
+commit on this PC, with every fetched source, the node oracles, Rich and
+`OSC8LINK_E2E=1`: `ruff format --check .`, `ruff check .`, `mypy --strict src`,
+`mypy --strict src tests` and `pytest` (CPython 3.13.2, 839 passed, none skipped) each
+exit 0; CPython 3.10.19 runs the suite with 835 passed and 3 skipped (Rich not installed
+there, and the installed-wheel test).
+
+#### Disputed findings
+
+None.
+
 ## Independent review (item 16)
 
 Pending.
