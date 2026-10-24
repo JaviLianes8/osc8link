@@ -12,6 +12,9 @@ from typing import TextIO
 # rules of the `supports-hyperlinks` package plus the terminals that set a TERM of their own.
 _TERMS = frozenset({"alacritty", "xterm-kitty", "foot", "foot-extra", "xterm-ghostty", "wezterm"})
 _ALWAYS = frozenset({"ghostty", "zed", "Orca", "WarpTerminal"})
+# parseInt skips JavaScript white space and line terminators, then reads ASCII digits only.
+_JS_SPACE = "\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+_LEADING_INT = re.compile(f"[{_JS_SPACE}]*([+-]?)([0-9]+)")
 
 
 def supports_hyperlinks(
@@ -25,15 +28,26 @@ def supports_hyperlinks(
     stream defaults to sys.stdout, env to os.environ and platform to sys.platform.
     `FORCE_HYPERLINK=1` forces True and `FORCE_HYPERLINK=0` forces False. Otherwise the
     stream must be a TTY, `TERM` must not be `dumb` and colour must not be turned off with
-    `FORCE_COLOR=0`; then Windows Terminal, iTerm2 3.1+, WezTerm, VS Code 1.72+, Ghostty,
-    VTE 0.50.1+, Alacritty, kitty and foot are recognised. CI services give False.
+    `FORCE_COLOR=0` or `false`; then Windows Terminal, iTerm2 3.1+, WezTerm, VS Code 1.72+,
+    Ghostty, VTE 0.50.1+, Alacritty, kitty and foot are recognised. CI services give False.
+    Numbers in the environment are read the way JavaScript's parseInt reads them, as the
+    `supports-hyperlinks` package does.
+
+    >>> import io
+    >>> supports_hyperlinks(io.StringIO(), env={})
+    False
+    >>> supports_hyperlinks(io.StringIO(), env={"FORCE_HYPERLINK": "1"})
+    True
     """
     env = os.environ if env is None else env
     platform = sys.platform if platform is None else platform
     force = env.get("FORCE_HYPERLINK", "")
     if force:
         return _leading_int(force) != 0
-    if env.get("FORCE_COLOR", "") in ("0", "false") or env.get("TERM") == "dumb":
+    colour = env.get("FORCE_COLOR")
+    if colour is not None and (colour == "false" or _leading_int(colour) == 0):
+        return False
+    if env.get("TERM") == "dumb":
         return False
     if not _isatty(sys.stdout if stream is None else stream):
         return False
@@ -61,7 +75,7 @@ def _program(program: str, version: str, env: Mapping[str, str]) -> bool | None:
     if program == "iTerm.app":
         return major > 3 or (major == 3 and minor >= 1)
     if program == "WezTerm":
-        nix = re.fullmatch(r"0-unstable-(\d{4}-\d{2}-\d{2})", version)
+        nix = re.fullmatch(r"0-unstable-([0-9]{4}-[0-9]{2}-[0-9]{2})", version)
         if nix:
             return nix.group(1) >= "2020-06-20"
         return major >= 20200620
@@ -75,7 +89,7 @@ def _program(program: str, version: str, env: Mapping[str, str]) -> bool | None:
 
 def _version(text: str) -> tuple[int, int, int]:
     """Read "3.1.0" as (3, 1, 0) and the dotless "4601" as (0, 46, 1); 0 when unreadable."""
-    packed = re.fullmatch(r"(\d{1,2})(\d{2})", text)
+    packed = re.fullmatch(r"([0-9]{1,2})([0-9]{2})", text)
     if packed:
         return 0, int(packed.group(1)), int(packed.group(2))
     parts = [_leading_int(part) for part in text.split(".")] + [None, None, None]

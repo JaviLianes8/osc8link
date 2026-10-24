@@ -9,6 +9,7 @@ import re
 import sys
 from collections.abc import Iterable, Sequence
 
+from . import __version__
 from ._build import Terminator, link
 from ._detect import supports_hyperlinks
 from ._sequences import iter_links, strip, unfinished_tail
@@ -26,6 +27,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="osc8link", description="Build, strip and list OSC 8 terminal hyperlinks."
     )
+    parser.add_argument("--version", action="version", version=f"osc8link {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)
     build = commands.add_parser("link", help="print a hyperlink to URL showing TEXT")
     build.add_argument("url", metavar="URL")

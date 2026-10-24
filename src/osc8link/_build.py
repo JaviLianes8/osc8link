@@ -7,6 +7,7 @@ from typing import Literal, TextIO
 from urllib.parse import quote
 
 from ._detect import supports_hyperlinks
+from ._errors import LinkError, quote_short, type_error
 
 Terminator = Literal["st", "bel"]
 
@@ -31,8 +32,14 @@ def link(url: str, text: str, *, id: str | None = None, terminator: Terminator =
     id is the same as none. The sequence ends with `ESC \\` by default or with BEL when
     terminator is "bel".
 
-    Raises ValueError for an empty url, an id holding `:`, `;` or a character outside
-    32 to 126, text holding a control string, or an unknown terminator.
+    Raises LinkError (a ValueError) for an empty url, a url holding a lone surrogate, an id
+    holding `:`, `;` or a character outside 32 to 126, text holding a control string, or an
+    unknown terminator; TypeError for an argument that is not a str.
+
+    >>> link("https://example.com", "Example")
+    '\\x1b]8;;https://example.com\\x1b\\\\Example\\x1b]8;;\\x1b\\\\'
+    >>> link("https://example.com/a b", "x", id="ref-1", terminator="bel")
+    '\\x1b]8;id=ref-1;https://example.com/a%20b\\x07x\\x1b]8;;\\x07'
     """
     target, params, end = _parts(url, text, id, terminator)
     return f"\x1b]8;{params};{target}{end}{text}\x1b]8;;{end}"
@@ -53,9 +60,17 @@ def auto_link(
     is a template where `{text}` and `{url}` (the encoded url) are replaced and nothing else
     is interpreted; when text is the url itself the fallback is just the text. The
     arguments are checked the same way in both cases, so a bad input fails whatever the
-    terminal.
+    terminal, with the errors of `link`.
+
+    >>> import io
+    >>> auto_link("https://example.com", "docs", stream=io.StringIO())
+    'docs (https://example.com)'
+    >>> auto_link("https://example.com", "docs", stream=io.StringIO(), fallback="{text}")
+    'docs'
     """
     target, params, end = _parts(url, text, id, terminator)
+    if not isinstance(fallback, str):
+        raise type_error("fallback", fallback)
     if supports_hyperlinks(stream):
         return f"\x1b]8;{params};{target}{end}{text}\x1b]8;;{end}"
     if text in (url, target):
@@ -65,33 +80,44 @@ def auto_link(
 
 
 def encode_url(url: str) -> str:
-    """Return url with every character outside `!` to `~` percent-encoded as UTF-8."""
+    """Return url with every character outside `!` to `~` percent-encoded as UTF-8.
+
+    Existing `%XX` escapes are kept, so encoding twice changes nothing. Raises LinkError for
+    a lone surrogate, which has no UTF-8 form, and TypeError for a url that is not a str.
+
+    >>> encode_url("https://en.wikipedia.org/wiki/\\u00c1 b")
+    'https://en.wikipedia.org/wiki/%C3%81%20b'
+    >>> encode_url("file:///tmp/%25x")
+    'file:///tmp/%25x'
+    """
     if not isinstance(url, str):
-        raise TypeError(f"url must be a str, not {type(url).__name__}")
+        raise type_error("url", url)
     try:
         return quote(url, safe=_URL_SAFE)
     except UnicodeEncodeError:
-        raise ValueError("url holds a lone surrogate, which has no UTF-8 encoding") from None
+        raise LinkError("url holds a lone surrogate, which has no UTF-8 encoding") from None
 
 
 def _parts(url: str, text: str, id: str | None, terminator: str) -> tuple[str, str, str]:
     target = encode_url(url)
     if not target:
-        raise ValueError("url must not be empty: an OSC 8 sequence without one closes a link")
+        raise LinkError("url must not be empty: an OSC 8 sequence without one closes a link")
     if not isinstance(text, str):
-        raise TypeError(f"text must be a str, not {type(text).__name__}")
+        raise type_error("text", text)
     if _CONTROL_STRING.search(text):
-        raise ValueError("text must not hold a control string such as an OSC 8 sequence")
+        raise LinkError("text must not hold a control string such as an OSC 8 sequence")
+    if not isinstance(terminator, str):
+        raise type_error("terminator", terminator)
     if terminator not in _TERMINATORS:
-        raise ValueError(f"terminator must be 'st' or 'bel', not {terminator!r}")
+        raise LinkError(f"terminator must be 'st' or 'bel', not {quote_short(terminator)}")
     return target, _id_param(id), _TERMINATORS[terminator]
 
 
 def _id_param(id: str | None) -> str:
-    if id is None or id == "":
+    if id is None:
         return ""
     if not isinstance(id, str):
-        raise TypeError(f"id must be a str, not {type(id).__name__}")
+        raise type_error("id", id)
     if any(not 0x20 <= ord(char) <= 0x7E or char in ":;" for char in id):
-        raise ValueError("id must hold only characters 32 to 126 other than ':' and ';'")
-    return f"id={id}"
+        raise LinkError("id must hold only characters 32 to 126 other than ':' and ';'")
+    return f"id={id}" if id else ""

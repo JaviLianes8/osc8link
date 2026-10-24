@@ -6,6 +6,8 @@ import re
 from collections.abc import Iterator
 from dataclasses import dataclass
 
+from ._errors import type_error
+
 # Read the way the DEC parser that xterm and VTE follow reads it. OSC is ESC ] (C0 controls
 # between the two are executed and DEL is ignored, so they do not break the opener) or the
 # C1 byte U+009D. ST is ESC \ or U+009C, and XTerm's BEL is accepted everywhere. Inside the
@@ -16,17 +18,26 @@ _SEQUENCE = re.compile(
     r"(?:\x1b(?P<c0>[\x00-\x17\x19\x1c-\x1f\x7f]*)\]|\x9d)"
     rf"0*8(?=[;{_ABORT}]|\Z)(?P<payload>[^{_ABORT}]*)(?P<end>\x1b\\|\x07|\x9c)?"
 )
-# C0 controls inside an OSC string are ignored by the terminal.
-_IGNORED = re.compile(r"[\x00-\x1f]")
+# C0 controls and DEL inside an OSC string are ignored by the terminal.
+_IGNORED = re.compile(r"[\x00-\x1f\x7f]")
 
 
 @dataclass(frozen=True)
 class Link:
-    """A hyperlink found in text.
+    """A hyperlink found in text by `iter_links`.
 
     `url` is the target as written, `text` the visible text (it may hold other escape
     sequences such as colours), `id` the `id` parameter or None when absent or empty, and
-    `params` every `key=value` parameter in order. A Link unpacks as `(url, text)`.
+    `params` every `key=value` parameter in order. A Link is frozen and hashable, compares
+    by value and unpacks as `(url, text)`.
+
+    >>> from osc8link import Link, iter_links, link
+    >>> found = next(iter_links(link("https://example.com", "Example", id="x")))
+    >>> found
+    Link(url='https://example.com', text='Example', id='x', params=(('id', 'x'),))
+    >>> url, text = found
+    >>> found == Link("https://example.com", "Example", "x", (("id", "x"),))
+    True
     """
 
     url: str
@@ -39,27 +50,57 @@ class Link:
         yield self.text
 
 
-def strip(s: str) -> str:
+def strip(s: str, /) -> str:
     """Return s with every OSC 8 sequence removed and the visible text kept.
 
     Sequences cut short (by ESC, CAN, SUB, a C1 control or the end of s) are removed up to
-    the byte that cut them, as a terminal would hide them.
+    the byte that cut them, as a terminal would hide them. Other escape sequences, such as
+    colours, stay. Raises TypeError when s is not a str.
+
+    >>> strip("see \\x1b]8;;https://example.com\\x1b\\\\docs\\x1b]8;;\\x1b\\\\ here")
+    'see docs here'
     """
+    _check(s)
     return _SEQUENCE.sub(lambda match: (match.group("c0") or "").replace("\x7f", ""), s)
 
 
-def contains_link(s: str) -> bool:
-    """Report whether s holds an OSC 8 sequence that opens a link to a non-empty URI."""
+def contains_link(s: str, /) -> bool:
+    """Report whether s holds an OSC 8 sequence that opens a link to a non-empty URI.
+
+    A close alone, a malformed sequence or one cut short does not count. Raises TypeError
+    when s is not a str.
+
+    >>> contains_link("\\x1b]8;;https://example.com\\x07docs\\x1b]8;;\\x07")
+    True
+    >>> contains_link("plain text"), contains_link("\\x1b]8;;\\x1b\\\\")
+    (False, False)
+    """
+    _check(s)
     return any(_open(match) is not None for match in _SEQUENCE.finditer(s))
 
 
-def iter_links(s: str) -> Iterator[Link]:
-    """Yield each hyperlink in s, in order of appearance.
+def iter_links(s: str, /) -> Iterator[Link]:
+    """Return an iterator over each hyperlink in s, in order of appearance.
 
     Follows the terminal state machine of the spec: an OSC 8 with a URI starts a link (and
     ends any open one), an OSC 8 without a URI ends it, and a link still open at the end of
-    s runs to the end. Links with no visible text are skipped.
+    s runs to the end. Links with no visible text are skipped. Raises TypeError at once
+    when s is not a str.
+
+    >>> line = "\\x1b]8;;https://a.test\\x1b\\\\A\\x1b]8;;https://b.test\\x1b\\\\B"
+    >>> [(url, text) for url, text in iter_links(line)]
+    [('https://a.test', 'A'), ('https://b.test', 'B')]
     """
+    _check(s)
+    return _links(s)
+
+
+def _check(s: object) -> None:
+    if not isinstance(s, str):
+        raise type_error("s", s)
+
+
+def _links(s: str) -> Iterator[Link]:
     current: Link | None = None
     pieces: list[str] = []
     position = 0

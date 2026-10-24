@@ -78,9 +78,9 @@ def test_a_missing_command_is_a_usage_error(capsys: pytest.CaptureFixture[str]) 
 
 
 def test_list_escapes_controls_in_both_fields() -> None:
-    # Tabs inside the payload are ignored by terminals; DEL is kept and must be escaped.
-    data = ("\x1b]8;;a\x7fb\tc\x1b\\" + "\x1b[31mX\\\x1b]8;;\x1b\\").encode()
-    assert run("list", stdin=data).stdout == b"a\\x7fbc\t\\x1b[31mX\\\\\n"
+    # Tabs and DEL inside the payload are ignored by terminals; a backslash is escaped.
+    data = ("\x1b]8;;a\x7fb\tc\\d\x1b\\" + "\x1b[31mX\x7f\x85\\\x1b]8;;\x1b\\").encode()
+    assert run("list", stdin=data).stdout == b"abc\\\\d\t\\x1b[31mX\\x7f\\x85\\\\\n"
 
 
 def test_strip_streams_line_by_line_and_holds_an_open_sequence() -> None:
