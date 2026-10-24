@@ -20,8 +20,12 @@ BETWEEN = {*map(chr, range(0x18)), "\x19", *map(chr, range(0x1C, 0x20)), "\x7f"}
 IGNORED = BETWEEN - {"\x07"}
 STRINGS = {0x9B: "csi", 0x9D: "osc", 0x90: "string", 0x98: "string", 0x9E: "string"}
 STRINGS[0x9F] = "string"
+STRINGS[0x9A] = "sci"
 ALPHABET = ["\x1b", "]", "\x9d", "8", "0", ";", ":", "=", "i", "d", "\\", "\x07", "\x9c"]
 ALPHABET += ["\x00", "\x18", "\x1a", "\x7f", "\x85", "a", "b", "\n", " ", chr(0x100)]
+# Escapes a removed opener may have to cancel: a BEL inside a CSI, APC and VTE's single
+# character introducer.
+ALPHABET += ["[", "_", "Z", "\x9b", "\x9f", "\x9a", "\x1b[1\x07"]
 # Whole pieces make complete sequences common enough to matter.
 ALPHABET += ["\x1b]8;", "\x9d8;", "\x1b]8;;", "id=a:", "http://x", "\x1b\\", "\x1b]8;;\x1b\\"]
 
@@ -59,7 +63,7 @@ def _sequence_at(s: str, i: int) -> tuple[int, str, str, bool] | None:
 
 
 def _after(state: str, char: str) -> str:
-    """The parser state after char: ground, esc, esc-int, csi, osc or string."""
+    """The parser state after char: ground, esc, esc-int, csi, osc, string or sci."""
     code = ord(char)
     if char in "\x18\x1a":
         return "ground"
@@ -67,6 +71,11 @@ def _after(state: str, char: str) -> str:
         return "esc"
     if 0x80 <= code <= 0x9F:
         return STRINGS.get(code, "ground")
+    if char == "\x7f":
+        return state
+    if state == "sci":
+        # SCI takes the next character, whatever it is, and is over.
+        return "ground"
     if state in ("ground", "osc", "string"):
         return "ground" if state == "osc" and char == "\x07" else state
     if code < 0x20 or code == 0x7F:
@@ -74,6 +83,7 @@ def _after(state: str, char: str) -> str:
     if state == "esc":
         named = {"[": "csi", "]": "osc", "P": "string", "X": "string", "^": "string"}
         named["_"] = "string"
+        named["Z"] = "sci"
         return named.get(char, "esc-int" if 0x20 <= code <= 0x2F else "ground")
     if state == "esc-int":
         return state if 0x20 <= code <= 0x2F else "ground"

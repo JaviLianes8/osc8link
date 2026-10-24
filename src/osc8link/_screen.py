@@ -13,7 +13,10 @@ _INTRODUCER = re.compile(r"[\x18\x1a\x1b\x80-\x9f]")
 # Executed C0 controls and DEL leave the state as it is; BEL is kept because it ends an OSC.
 _QUIET = re.compile(r"[\x00-\x06\x08-\x17\x19\x1c-\x1f\x7f]")
 _C1 = {"\x9b": "\x1b[", "\x9d": "\x1b]", "\x90": "\x1bP", "\x98": "\x1bX", "\x9e": "\x1b^"}
-_C1["\x9f"] = "\x1b_"
+_C1.update({"\x9f": "\x1b_", "\x9a": "\x1bZ"})
+# VTE's single character introducer (SCI) takes the next character whatever it is, a
+# control included; only DEL, which VTE ignores everywhere, leaves it waiting.
+_SCI = re.compile(r"\x1b[\x00-\x17\x19\x1c-\x1f\x7f]*Z\x7f*")
 # An escape waiting for its final byte, a CSI waiting for its final byte, an OSC waiting
 # for its terminator, or a DCS, SOS, PM or APC string waiting for ST.
 _PENDING = re.compile(
@@ -28,8 +31,8 @@ CANCEL = "\x18"
 def carry(state: str, text: str) -> str:
     """Return the unfinished sequence that state followed by text leaves, "" for none.
 
-    The result is a short stand-in ("\\x1b", "\\x1b ", "\\x1b[", "\\x1b]" or "\\x1bP") that
-    behaves like the real tail for any text that follows.
+    The result is a short stand-in ("\\x1b", "\\x1b ", "\\x1b[", "\\x1b]", "\\x1bP" or
+    "\\x1bZ") that behaves like the real tail for any text that follows.
     """
     last = -1
     for found in _INTRODUCER.finditer(text):
@@ -42,6 +45,8 @@ def carry(state: str, text: str) -> str:
     if not tail:
         return ""
     tail = _C1.get(tail[0], tail[0]) + tail[1:]
+    if _SCI.fullmatch(tail):
+        return "\x1bZ"
     match = _PENDING.fullmatch(_QUIET.sub("", tail))
     if match is None:
         return ""

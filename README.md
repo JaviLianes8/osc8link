@@ -129,7 +129,8 @@ empty; `--bel` switches the terminator). `strip` and `list` read UTF-8 from stdi
 growing log (`tail -f app.log | osc8link strip`). `list` shows control characters,
 backslashes and bytes that are not UTF-8 escaped (`\x1b`, `\t`, `\\`, `\xff`), so its
 output is safe to print and splits cleanly on tabs. `supports` answers through the exit
-code: 0 yes, 1 no. Bad input, or a missing stdin or stdout, exits 2. `osc8link --version`
+code: 0 yes, 1 no. Bad input, or a missing stdin or stdout, exits 2; messages go to
+stderr only, never into the output, even when stderr is closed. `osc8link --version`
 and `python -m osc8link` work too.
 
 ## API

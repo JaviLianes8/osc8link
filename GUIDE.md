@@ -54,7 +54,9 @@ parser source character by character.
 A sequence that is cut short or reaches the end of the text is not a link; `strip` removes
 it up to the character that cut it, as a terminal hides it. The ESC or C1 control that
 opens an OSC 8 sequence also ends any escape sequence or control string still unfinished
-before it (`ESC [ 1`, a lone ESC, `ESC P ...`, an OSC without its terminator). Removing
+before it (`ESC [ 1`, a CSI holding a BEL, a lone ESC, `ESC P ...`, an APC, SOS or PM
+string, an OSC without its terminator, or VTE's single character introducer `ESC Z` or
+`U+009A`, which takes the next character whatever it is). Removing
 the sequence would let that earlier one run on into the text after it, so `strip` leaves a
 CAN (U+0018) in its place: CAN ends any escape and a terminal shows nothing for it. When
 nothing is unfinished there, nothing is added. So `strip` keeps the visible text, never
@@ -133,12 +135,17 @@ no visible text. Input is read as UTF-8. `strip` passes any other byte through u
 control byte for a 7-bit or an 8-bit terminal. `strip` holds back a sequence still open at
 the end of a line, or an opener not yet complete (ESC, ESC and a line break, `ESC ]`),
 until the next line arrives, while the held text is shorter than 65,536 characters (not
-bytes); past that the open sequence is dropped and what follows is passed on as it comes.
-Holding costs linear time, however long the sequence. Within that limit, `strip` on the
-command line gives exactly what `strip()` gives on the whole input. A reader that goes away
-(`osc8link list | head`) ends the command quietly. A command started without the stdin or
-stdout it needs (`osc8link list <&-`, or under `pythonw`) prints `osc8link: stdin is
-closed` (or `stdout`) to stderr and exits 2.
+bytes; only the held text counts, however long the line before it). When the held text
+reaches 65,536 characters it is let go: an open sequence is dropped, an opener not yet
+complete is written followed by a CAN, so later lines cannot complete it, and what follows
+is passed on as it comes. Holding costs linear time, however long the sequence. Within that
+limit, `strip` on the command line gives exactly what `strip()` gives on the whole input.
+A held line goes out as soon as its sequence ends or can no longer be completed, so
+`tail -f` does not stall. A reader that goes away (`osc8link list | head`) ends the
+command quietly. A command started without the stdin or stdout it needs (`osc8link list
+<&-`, or under `pythonw`) prints `osc8link: stdin is closed` (or `stdout`) to stderr and
+exits 2. Started without stderr (`2>&-`), the commands write their messages nowhere, never
+to stdout, and keep their exit codes (2 for bad input or a usage error).
 
 ## Errors
 

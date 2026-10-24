@@ -42,6 +42,19 @@ def test_a_dangling_escape_cannot_open_a_control_string() -> None:
         ("\x1b]0;title\x1b]8;;http://x\x07T", "\x1b]0;title\x18T"),
         ("\x1b \x1b]8;;http://x\x07T", "\x1b \x18T"),
         ("\x1b\x07\x1b\x05]8;;http://x\x07T", "\x1b\x07\x18\x05T"),
+        # A BEL inside a CSI is executed and the CSI goes on.
+        ("a\x1b[1\x07\x1b]8;;https://a.test\x07T\x1b]8;;\x07m", "a\x1b[1\x07\x18Tm"),
+        ("a\x9b1\x07\x9d8;;https://a.test\x9cT\x9d8;;\x9cm", "a\x9b1\x07\x18Tm"),
+        # An APC, SOS or PM string, 7-bit and 8-bit, beside the DCS above.
+        ("a\x1b_x\x1b]8;;https://a.test\x07T\x1b]8;;\x07m", "a\x1b_x\x18Tm"),
+        ("a\x9fx\x9d8;;https://a.test\x9cT\x9d8;;\x9cm", "a\x9fx\x18Tm"),
+        ("a\x1bXx\x1b]8;;https://a.test\x07T", "a\x1bXx\x18T"),
+        ("a\x1b^x\x1b]8;;https://a.test\x07T", "a\x1b^x\x18T"),
+        # VTE's single character introducer (SCI) swallows the character after it.
+        ("\x1bZ\x1b]8;;http://x.test\x07Text\x1b]8;;\x07", "\x1bZ\x18Text"),
+        ("\x9a\x9d8;;http://x.test\x9cText\x9d8;;\x9c", "\x9a\x18Text"),
+        ("\x1bZ\x7f\x1b]8;;http://x\x07T", "\x1bZ\x7f\x18T"),
+        ("\x1b\x05\x7fZ\x1b]8;;http://x\x07T", "\x1b\x05\x7fZ\x18T"),
     ],
 )
 def test_an_unfinished_sequence_before_a_removed_one_is_cancelled(text: str, expected: str) -> None:
@@ -51,7 +64,12 @@ def test_an_unfinished_sequence_before_a_removed_one_is_cancelled(text: str, exp
 
 @pytest.mark.parametrize(
     "before",
-    ["", "a", "\x1b[31m", "\x1b[1mX", "\x1b]0;t\x07", f"\x1b]0;t{ST}", "\x1b7", "\x1b(B", "\x18"],
+    [
+        *["", "a", "\x1b[31m", "\x1b[1mX", "\x1b]0;t\x07", f"\x1b]0;t{ST}", "\x1b7", "\x1b(B"],
+        "\x18",
+        # SCI is over once a character other than DEL follows it.
+        *["\x1bZa", "\x1bZ\n", "\x1bZ\x05", "\x9aa", "\x1b Z"],
+    ],
 )
 def test_finished_text_before_a_removed_sequence_gets_nothing_added(before: str) -> None:
     assert strip(f"{before}\x1b]8;;http://x{ST}T\x1b]8;;{ST}") == before + "T"
@@ -63,7 +81,21 @@ def test_a_cancel_is_added_only_once_for_adjacent_sequences() -> None:
 
 
 ALPHABET = ["\x1b", "]", "\x9d", "8", "0", ";", "\\", "\x07", "\x9c", "[", "P", "1", "\n"]
-ALPHABET += ["\x00", "\x18", "\x1a", "\x7f", "\x9b", "\x90", "a", " ", "m"]
+ALPHABET += [
+    "\x00",
+    "\x18",
+    "\x1a",
+    "\x7f",
+    "\x9b",
+    "\x90",
+    "a",
+    " ",
+    "m",
+    "_",
+    "\x9f",
+    "Z",
+    "\x9a",
+]
 ALPHABET += ["\x1b]8;", "\x1b]8;;", "http://x", ST, "\x1b]8;;\x1b\\", "\x1b]8;;http://x\x07"]
 
 

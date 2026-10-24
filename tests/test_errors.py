@@ -123,6 +123,28 @@ class _Tty(io.StringIO):
         return True
 
 
+class _Lying(str):
+    def __eq__(self, other: object) -> bool:
+        return True
+
+    def __ne__(self, other: object) -> bool:
+        return False
+
+    def __str__(self) -> str:
+        return "dumb"
+
+    __hash__ = str.__hash__
+
+
+@pytest.mark.parametrize("term", ["xterm-ghostty", "dumb"])
+def test_detection_reads_a_str_subclass_value_by_its_characters(term: str) -> None:
+    plain = {"TERM": term, "TERM_PROGRAM": "ghostty"}
+    lying = {"TERM": _Lying(term), "TERM_PROGRAM": _Lying("ghostty")}
+    expected = supports_hyperlinks(_Tty(), env=plain, platform="linux")
+    assert supports_hyperlinks(_Tty(), env=lying, platform="linux") is expected
+    assert expected is (term != "dumb")
+
+
 class _Raises:
     def isatty(self) -> bool:
         raise RuntimeError("boom")
