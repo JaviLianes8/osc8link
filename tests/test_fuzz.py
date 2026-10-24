@@ -50,8 +50,9 @@ def _sequence_at(s: str, i: int) -> tuple[int, str, str, bool] | None:
     return end, kept, payload, False
 
 
-def reference(s: str) -> tuple[str, list[Link]]:
+def reference(s: str) -> tuple[str, list[Link], bool]:
     visible, links, pieces = "", [], ""
+    opened = False
     current: tuple[str, str | None, tuple[tuple[str, str], ...]] | None = None
     i = 0
     while i < len(s):
@@ -73,9 +74,10 @@ def reference(s: str) -> tuple[str, list[Link]]:
         params = tuple((k, v) for k, eq, v in (p.partition("=") for p in raw.split(":")) if eq)
         ident = next((v for k, v in params if k == "id"), "") or None
         current = (uri, ident, params) if uri else None
+        opened = opened or bool(uri)
     if current is not None and pieces:
         links.append(Link(current[0], pieces, current[1], current[2]))
-    return visible, links
+    return visible, links, opened
 
 
 def _text(rng: random.Random, size: int) -> str:
@@ -88,11 +90,10 @@ def test_the_library_reads_like_the_reference(seed: int) -> None:
     found = 0
     for _ in range(4000):
         s = _text(rng, rng.randrange(0, 40))
-        visible, links = reference(s)
+        visible, links, opened = reference(s)
         assert strip(s) == visible, s
         assert list(iter_links(s)) == links, s
-        if links:
-            assert contains_link(s), s
+        assert contains_link(s) is opened, s
         found += len(links)
     assert found > 150
 
