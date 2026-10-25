@@ -179,7 +179,7 @@ reporting only to the maintainer. Every finding, its fix and its contract are in
 | a | 5 | 0d289ee | FAIL | N1 and N2 confirmed fixed; N3 (`inspect.getsource` of `SupportsIsatty` shows a line of `__init__.py` on Python 3.13+); fixed in bf47e23 |
 | e | 8 | 0d289ee | FAIL | round 7 findings confirmed fixed; N1-S14, N2-S18-S21 (survivors on correct code: an interrupt inside `isatty`, a falsy stream); contracts in bf47e23 |
 | a | 6 | | pending | |
-| e | 9 | | pending | |
+| e | 9 | d30ce21 | PASS | round 8 survivors and earlier findings rerun, all killed; five-mutant sweep on the changed `inspect` block, no survivor |
 
 ## Independent review (item 16)
 
