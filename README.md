@@ -147,6 +147,7 @@ closed. `osc8link --version` and `python -m osc8link` work too.
 | `Link(url, text, id=None, params=())` | A found link; frozen, hashable, unpacks as `(url, text)` |
 | `LinkError` | A `ValueError` for arguments that cannot be written safely |
 | `Terminator` | `Literal["st", "bel"]` |
+| `SupportsIsatty` | The type of `stream`: a protocol for any object whose `isatty()` returns a `bool` |
 
 `link` and `auto_link` raise `LinkError` for an empty URL (an OSC 8 without one closes a
 link), a URL holding a lone surrogate, an `id` holding `:`, `;` or a character outside 32
@@ -156,9 +157,11 @@ and `strip`, `contains_link` and `iter_links` raise `TypeError` for an argument 
 a `str` (a `str` subclass is read by its characters alone). Messages name the argument and quote at most 40
 characters. `supports_hyperlinks` raises `TypeError` only for a `platform` that is not a
 `str`; it treats an environment value that is not a `str` as unset and a stream whose
-`isatty` fails as not a terminal. The `stream` of `supports_hyperlinks` and `auto_link` may
-be any object with an `isatty()` method (`TextIO`, `IO[str]`, `io.TextIOBase` or a class
-of your own); the answer is read by its truth value.
+`isatty` fails as not a terminal. The `stream` of `supports_hyperlinks` and `auto_link` is
+typed `SupportsIsatty | None`: any object whose `isatty()` returns a `bool` (`TextIO`,
+`IO[str]`, `io.TextIOBase` or a class of your own) passes `mypy --strict`, and at run time
+any other answer is read by its truth value. Import `SupportsIsatty` from `osc8link` to
+annotate a stream of your own.
 
 ## Why
 

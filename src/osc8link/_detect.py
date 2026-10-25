@@ -20,9 +20,25 @@ _LEADING_INT = re.compile(f"[{_JS_SPACE}]*([+-]?)([0-9]+)")
 
 
 class SupportsIsatty(Protocol):
-    """Any object with an isatty() method, such as a text stream: all detection asks of it."""
+    """The type of `stream`: any object whose isatty() returns a bool, such as a text stream.
+
+    It is a typing protocol, so a class of one's own needs no base class; detection calls
+    isatty() and nothing else.
+
+    >>> from osc8link import SupportsIsatty, supports_hyperlinks
+    >>> class Pane:
+    ...     def isatty(self) -> bool:
+    ...         return True
+    >>> def shows_links(stream: SupportsIsatty) -> bool:
+    ...     return supports_hyperlinks(stream, env={"TERM_PROGRAM": "ghostty"}, platform="linux")
+    >>> shows_links(Pane())
+    True
+    """
 
     def isatty(self) -> bool: ...
+
+
+SupportsIsatty.__module__ = "osc8link"
 
 
 def supports_hyperlinks(
@@ -42,8 +58,8 @@ def supports_hyperlinks(
     foot are recognised. Numbers in the environment are read the way JavaScript's parseInt
     reads them, as the `supports-hyperlinks` package does. An environment value that is not
     a str counts as unset and a stream whose isatty fails is not a TTY; a platform that is
-    not a str raises TypeError. stream may be any object with an isatty() method, whose
-    answer is read by its truth value.
+    not a str raises TypeError. stream is typed `SupportsIsatty`, any object whose isatty()
+    returns a bool; at run time any other answer is read by its truth value.
 
     >>> import io
     >>> supports_hyperlinks(io.StringIO(), env={})

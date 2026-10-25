@@ -92,8 +92,9 @@ print(repr(strip(text)), contains_link("\x1b]8;;\x1b\\"))
    true otherwise.
 2. `FORCE_COLOR` set to `false`, or to a value whose leading number is 0, says no;
    `TERM=dumb` says no.
-3. A stream that is not a TTY (or whose `isatty` fails, whatever it raises) says no. Any
-   object with an `isatty()` method will do; its answer is read by its truth value.
+3. A stream that is not a TTY (or whose `isatty` raises an exception, any `Exception`
+   subclass) says no. The stream is typed `osc8link.SupportsIsatty`, any object whose
+   `isatty()` returns a `bool`; at run time any other answer is read by its truth value.
 4. `WT_SESSION` (Windows Terminal) says yes, even under CI; any other Windows says no;
    `CI` or `TEAMCITY_VERSION` says no.
 5. `TERM_PROGRAM`: iTerm.app 3.1 or later, WezTerm 20200620 or later (also the Nix form

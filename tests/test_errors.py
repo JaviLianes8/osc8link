@@ -178,6 +178,17 @@ class _NotCallable:
     isatty = None
 
 
-@pytest.mark.parametrize("stream", [_Raises(), _NotCallable()])
+class _NoTruth:
+    def __bool__(self) -> bool:
+        raise ValueError("no truth value")
+
+
+class _AnswersBadly:
+    # The call succeeds; reading its answer by truth value is what fails.
+    def isatty(self) -> bool:
+        return _NoTruth()  # type: ignore[return-value]
+
+
+@pytest.mark.parametrize("stream", [_Raises(), _NotCallable(), _AnswersBadly()])
 def test_detection_says_no_whatever_a_broken_isatty_raises(stream: Any) -> None:
     assert supports_hyperlinks(stream, env={"TERM": "alacritty"}, platform="linux") is False

@@ -36,6 +36,12 @@ class Pane:
     def isatty(self) -> bool: return True
 supports_hyperlinks(Pane())
 supports_hyperlinks(5)
+class Count:
+    def isatty(self) -> int: return 1
+supports_hyperlinks(Count())
+from osc8link import SupportsIsatty
+def wrap(stream: SupportsIsatty | None = None) -> str:
+    return auto_link("u", "t", stream=stream)
 """
 
 
@@ -88,6 +94,18 @@ def test_any_object_with_isatty_is_a_stream(mypy_output: str) -> None:
     errors = re.findall(r"snippet\.py:(\d+): error:", mypy_output)
     assert [line for line in errors if 16 <= int(line) <= 24] == [], mypy_output
     assert re.search(r"snippet\.py:25: error: .*\[arg-type\]", mypy_output), mypy_output
+
+
+def test_isatty_is_typed_to_return_a_bool(mypy_output: str) -> None:
+    # At run time any answer is read by its truth value, but the declared type is bool,
+    # so an isatty returning an int is rejected; widening it later breaks nobody.
+    assert re.search(r"snippet\.py:28: error: .*\[arg-type\]", mypy_output), mypy_output
+
+
+def test_the_stream_protocol_is_public(mypy_output: str) -> None:
+    # A wrapper annotates its stream with the protocol, imported from the package.
+    errors = re.findall(r"snippet\.py:(\d+): error:", mypy_output)
+    assert [line for line in errors if 29 <= int(line) <= 31] == [], mypy_output
 
 
 def _revealed(output: str, line: int) -> str:

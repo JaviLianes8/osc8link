@@ -11,7 +11,7 @@ default) and "bel" writes the BEL byte that XTerm also accepts.
 """
 
 from ._build import Terminator, auto_link, encode_url, link
-from ._detect import supports_hyperlinks
+from ._detect import SupportsIsatty, supports_hyperlinks
 from ._errors import LinkError
 from ._sequences import Link, contains_link, iter_links, strip
 
@@ -20,6 +20,7 @@ __version__ = "1.0.0"
 __all__ = [
     "Link",
     "LinkError",
+    "SupportsIsatty",
     "Terminator",
     "auto_link",
     "contains_link",

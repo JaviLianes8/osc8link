@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_API: list[str] = [
     "Link",
     "LinkError",
+    "SupportsIsatty",
     "Terminator",
     "auto_link",
     "contains_link",
@@ -74,6 +75,16 @@ def test_every_public_function_keeps_its_signature() -> None:
         assert typing.get_type_hints(getattr(osc8link, name)), name
 
 
+def test_the_stream_type_is_the_public_protocol() -> None:
+    # A wrapper can annotate its own stream with the type the two functions declare.
+    for name in ("supports_hyperlinks", "auto_link"):
+        hint = typing.get_type_hints(getattr(osc8link, name))["stream"]
+        assert typing.get_args(hint) == (osc8link.SupportsIsatty, type(None)), name
+    assert "osc8link.SupportsIsatty" in repr(osc8link.SupportsIsatty)
+    hints = typing.get_type_hints(osc8link.SupportsIsatty.isatty)
+    assert hints == {"return": bool}
+
+
 def test_link_fields_and_error_type_are_fixed() -> None:
     fields = [field.name for field in dataclasses.fields(osc8link.Link)]
     assert fields == ["url", "text", "id", "params"]
@@ -84,7 +95,7 @@ def test_link_fields_and_error_type_are_fixed() -> None:
 
 def test_public_classes_name_the_public_module() -> None:
     # Pickles bind to __module__, so they must not name a private module that may move.
-    for cls in (osc8link.Link, osc8link.LinkError):
+    for cls in (osc8link.Link, osc8link.LinkError, osc8link.SupportsIsatty):
         assert cls.__module__ == "osc8link"
         assert cls.__qualname__ == cls.__name__
     found = osc8link.Link("https://a.test", "A", "x", (("id", "x"),))
@@ -114,7 +125,7 @@ def test_the_docstring_examples_pass() -> None:
     runner = doctest.DocTestRunner(optionflags=doctest.ELLIPSIS)
     for test in doctest.DocTestFinder().find(osc8link, "osc8link"):
         runner.run(test)
-    for name in PUBLIC_API[:2] + PUBLIC_API[3:]:
+    for name in (name for name in PUBLIC_API if name != "Terminator"):
         for test in doctest.DocTestFinder().find(getattr(osc8link, name), name):
             runner.run(test)
     results = runner.summarize(verbose=False)

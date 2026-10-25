@@ -25,6 +25,17 @@ def test_a_terminal_that_shows_links_gets_the_link(ghostty: None) -> None:
     assert built == link("https://a.test/\u00e9", "A", id="x", terminator="bel")
 
 
+@pytest.mark.parametrize("platform", ["win32", "linux"])
+def test_the_platform_is_taken_from_sys_platform(
+    ghostty: None, monkeypatch: pytest.MonkeyPatch, platform: str
+) -> None:
+    # auto_link has no platform argument: a Windows console without WT_SESSION gets the
+    # fallback text, never escape codes, for the same tty and environment.
+    monkeypatch.setattr("sys.platform", platform)
+    built = auto_link("https://a.test", "A", stream=Tty())
+    assert built == ("A (https://a.test)" if platform == "win32" else link("https://a.test", "A"))
+
+
 def test_a_pipe_gets_text_and_the_encoded_url(ghostty: None) -> None:
     assert (
         auto_link("https://a.test/\u00e9", "A", stream=io.StringIO()) == "A (https://a.test/%C3%A9)"

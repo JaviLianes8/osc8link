@@ -8,7 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ## [1.0.0] - 2026-10-25
 
-First stable release. The public API is the ten names in `osc8link.__all__` with the
+First stable release. The public API is the eleven names in `osc8link.__all__` with the
 signatures in the README, the `Link` fields, the `LinkError` type, the command line
 (`link`, `strip`, `list`, `supports`, exit codes 0, 1 and 2) and the reading and detection
 rules in the GUIDE. They change only in a new major version.
@@ -18,6 +18,8 @@ rules in the GUIDE. They change only in a new major version.
 - `LinkError`, a `ValueError` subclass, raised by `link`, `auto_link` and `encode_url` for
   arguments they cannot write safely. Code that catches `ValueError` keeps working.
 - `osc8link --version`.
+- `SupportsIsatty`, the typing protocol of the `stream` argument (any object whose
+  `isatty()` returns a `bool`), so a wrapper can annotate its own stream with it.
 - A GUIDE with the reading rules, the detection rules, the command line, the errors and
   the differences from VTE, xterm.js and `supports-hyperlinks`.
 - Every public name documents a runnable example; the examples run as tests.
@@ -63,13 +65,14 @@ rules in the GUIDE. They change only in a new major version.
   `__str__`, `__format__` or `__iter__` is never called, so a `(str, Enum)` member is
   written as its value and the checked text is the written text.
 - `supports_hyperlinks` treats an environment value that is not a `str` as unset, says no
-  for a stream whose `isatty` raises anything, and raises `TypeError` for a `platform` that
-  is not a `str` (0.2.0 raised from inside `re` or returned an answer).
-- The `stream` of `supports_hyperlinks` and `auto_link` is typed as any object with an
-  `isatty()` method instead of `TextIO`, so `IO[str]`, `io.TextIOBase` and other streams
-  pass `mypy --strict`. Nothing changes at run time.
-- `Link` and `LinkError` report `osc8link` as their module, so pickles and tracebacks name
-  the public module rather than a private one.
+  for a stream whose `isatty` raises an exception (any `Exception` subclass), and raises
+  `TypeError` for a `platform` that is not a `str` (0.2.0 raised from inside `re` or
+  returned an answer).
+- The `stream` of `supports_hyperlinks` and `auto_link` is typed `SupportsIsatty`, any
+  object whose `isatty()` returns a `bool`, instead of `TextIO`, so `IO[str]`,
+  `io.TextIOBase` and other streams pass `mypy --strict`. Nothing changes at run time.
+- `Link`, `LinkError` and `SupportsIsatty` report `osc8link` as their module, so pickles
+  and tracebacks name the public module rather than a private one.
 
 ### Removed
 
