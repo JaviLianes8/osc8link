@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import collections
 import io
+import os
 import sys
+import types
+from collections.abc import Callable
+from typing import Any
 
 import pytest
 
@@ -74,3 +79,41 @@ def test_an_interrupt_inside_isatty_is_not_swallowed(error: BaseException) -> No
     # Only an Exception subclass means "not a terminal"; Ctrl-C and exit still propagate.
     with pytest.raises(type(error)):
         supports_hyperlinks(Interrupted(error), env={"TERM_PROGRAM": "ghostty"}, platform="linux")
+
+
+class NotAMapping:
+    """Has items() like a dict but is not a Mapping."""
+
+    def items(self) -> list[tuple[str, str]]:
+        return [("FORCE_HYPERLINK", "1")]
+
+
+@pytest.mark.parametrize(
+    ("env", "kind"),
+    [
+        (5, "int"),
+        ("FORCE_HYPERLINK=1", "str"),
+        ([("FORCE_HYPERLINK", "1")], "list"),
+        (NotAMapping(), "NotAMapping"),
+    ],
+)
+def test_detection_rejects_an_env_that_is_not_a_mapping(env: object, kind: str) -> None:
+    with pytest.raises(TypeError, match=rf"^env must be a mapping, not {kind}$"):
+        supports_hyperlinks(io.StringIO(), env=env, platform="linux")  # type: ignore[arg-type]
+
+
+def test_an_env_type_name_is_cut_in_the_message() -> None:
+    long_name: Any = type("N" * 60, (), {})()
+    with pytest.raises(TypeError, match=r"^env must be a mapping, not N{40}$"):
+        supports_hyperlinks(io.StringIO(), env=long_name, platform="linux")
+
+
+@pytest.mark.parametrize("wrap", [dict, types.MappingProxyType, collections.ChainMap])
+def test_detection_accepts_any_mapping_as_env(wrap: Callable[[dict[str, str]], object]) -> None:
+    env: Any = wrap({"FORCE_HYPERLINK": "1"})
+    assert supports_hyperlinks(io.StringIO(), env=env, platform="linux") is True
+
+
+def test_detection_accepts_os_environ_as_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FORCE_HYPERLINK", "1")
+    assert supports_hyperlinks(io.StringIO(), env=os.environ, platform="linux") is True

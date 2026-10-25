@@ -35,9 +35,9 @@ def quote_short(value: str) -> str:
     return f"{value[:_QUOTE_LIMIT]!r}... ({len(value)} characters)"
 
 
-def type_error(name: str, value: object) -> TypeError:
+def type_error(name: str, value: object, expected: str = "a str") -> TypeError:
     kind = type(value).__name__[:_QUOTE_LIMIT]
-    return TypeError(f"{name} must be a str, not {kind}")
+    return TypeError(f"{name} must be {expected}, not {kind}")
 
 
 def exact(name: str, value: object) -> str:

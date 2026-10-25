@@ -8,7 +8,7 @@ import sys
 from collections.abc import Mapping
 from typing import Protocol
 
-from ._errors import exact
+from ._errors import exact, type_error
 
 # The spec says a terminal cannot be asked, so this reads the environment, following the
 # rules of the `supports-hyperlinks` package plus the terminals that set a TERM of their own.
@@ -61,9 +61,10 @@ def supports_hyperlinks(
     Code 1.72+, Ghostty, VTE (except `VTE_VERSION` 5000 or 0.50.0), Alacritty, kitty and
     foot are recognised. Numbers in the environment are read the way JavaScript's parseInt
     reads them, as the `supports-hyperlinks` package does. An environment value that is not
-    a str counts as unset and a stream whose isatty fails is not a TTY; a platform that is
-    not a str raises TypeError. stream is typed `SupportsIsatty`, any object whose isatty()
-    returns a bool; at run time any other answer is read by its truth value.
+    a str counts as unset and a stream whose isatty fails is not a TTY; an env that is not a
+    Mapping or a platform that is not a str raises TypeError. stream is typed
+    `SupportsIsatty`, any object whose isatty() returns a bool; at run time any other answer
+    is read by its truth value.
 
     >>> import io
     >>> supports_hyperlinks(io.StringIO(), env={})
@@ -72,6 +73,8 @@ def supports_hyperlinks(
     True
     """
     platform = sys.platform if platform is None else exact("platform", platform)
+    if env is not None and not isinstance(env, Mapping):
+        raise type_error("env", env, "a mapping")
     values = os.environ if env is None else env
     env = {key: str.__str__(value) for key, value in values.items() if isinstance(value, str)}
     force = env.get("FORCE_HYPERLINK", "")

@@ -66,8 +66,9 @@ rules in the GUIDE. They change only in a new major version.
   written as its value and the checked text is the written text.
 - `supports_hyperlinks` treats an environment value that is not a `str` as unset, says no
   for a stream whose `isatty` raises an exception (any `Exception` subclass), and raises
-  `TypeError` for a `platform` that is not a `str` (0.2.0 raised from inside `re` or
-  returned an answer).
+  `TypeError` for an `env` that is not a `Mapping` (0.2.0 raised `AttributeError`, or
+  accepted an object with `get` and `in`) or a `platform` that is not a `str` (0.2.0 raised
+  from inside `re` or returned an answer).
 - The `stream` of `supports_hyperlinks` and `auto_link` is typed `SupportsIsatty`, any
   object whose `isatty()` returns a `bool`, instead of `TextIO`, so `IO[str]`,
   `io.TextIOBase` and other streams pass `mypy --strict`. Nothing changes at run time.

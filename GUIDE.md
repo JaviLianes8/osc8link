@@ -111,7 +111,8 @@ print(repr(strip(text)), contains_link("\x1b]8;;\x1b\\"))
 
 Numbers are read like JavaScript's `parseInt`: leading white space (including U+00A0 and
 U+FEFF) is skipped, then an optional sign and ASCII digits; huge values are capped. An
-environment value that is not a `str` counts as unset.
+environment value that is not a `str` counts as unset. `env` itself must be a `Mapping`
+(`os.environ`, a `dict`, a `types.MappingProxyType`); anything else raises `TypeError`.
 
 Deliberate differences from `supports-hyperlinks`: command-line flags such as
 `--no-hyperlink` are not read (a library does not own `sys.argv`), `NETLIFY` is not
@@ -154,13 +155,14 @@ to stdout, and keep their exit codes (2 for bad input or a usage error).
 | Raised | When |
 |---|---|
 | `LinkError` (a `ValueError`) | empty URL (`link`, `auto_link`); URL with a lone surrogate (also `encode_url`); id with `:`, `;` or a character outside 32 to 126; text with a control string; unknown terminator |
-| `TypeError` | any argument of `link`, `auto_link`, `encode_url`, `strip`, `contains_link` or `iter_links` that is not a `str`; a `platform` of `supports_hyperlinks` that is not a `str` |
+| `TypeError` | a `url`, `text`, `fallback` or `terminator` that is not a `str`, an `id` that is neither `None` nor a `str` (`link`, `auto_link`, `encode_url`); the text given to `strip`, `contains_link` or `iter_links` when it is not a `str`; an `env` of `supports_hyperlinks` that is not a `Mapping`, or a `platform` that is not a `str` |
 
 Messages name the argument and quote at most 40 characters of it. A `str` subclass is
 accepted and read by its characters alone: its own `__str__`, `__format__` or `__iter__`
-is never called, so a `(str, Enum)` member is written as its value. `supports_hyperlinks`
-never raises for odd environment values (one that is not a `str` counts as unset) or for a
-stream whose `isatty` fails.
+is never called, so a `(str, Enum)` member is written as its value. The `stream` of
+`auto_link` and `supports_hyperlinks` is never type-checked (see the detection rules).
+`supports_hyperlinks` never raises for odd environment values (one that is not a `str`
+counts as unset) or for a stream whose `isatty` fails.
 
 ## Ground truth
 
@@ -203,7 +205,8 @@ See the [CHANGELOG](https://github.com/JaviLianes8/osc8link/blob/main/CHANGELOG.
 that catches `ValueError` for bad values keeps working, since `LinkError` is one. Two type
 checks moved: a `terminator` that is not a `str` raised `ValueError` and now raises
 `TypeError`, and `iter_links` with an argument that is not a `str` raised at the first
-`next()` and now raises `TypeError` at the call. Calls like `strip(s=text)` must pass the
-text positionally. A DEL inside a sequence no longer reaches `Link.url`, a control inside
+`next()` and now raises `TypeError` at the call. An `env` passed to `supports_hyperlinks`
+must be a `Mapping`: an object with only `get` and `in` was accepted and now raises
+`TypeError`. Calls like `strip(s=text)` must pass the text positionally. A DEL inside a sequence no longer reaches `Link.url`, a control inside
 the command number (`ESC ] 8 SOH ; ;`) no longer hides a link, and `strip` may leave a CAN
 where a removed sequence had cut short an unfinished escape.
