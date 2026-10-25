@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "osc8link"
-version = "0.2.0"
+version = "1.0.0"
 description = "Build, detect and strip OSC 8 terminal hyperlinks safely, with terminal support detection and plain-text fallback, zero dependencies, fully typed"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,7 +13,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Javier Lianes", email = "javier@lianes8studio.com" }]
 keywords = ["osc8", "osc-8", "hyperlink", "terminal", "ansi", "escape-sequence", "vt100", "xterm", "cli", "tty", "link", "strip-ansi"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
@@ -24,18 +24,20 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: Terminals",
+    "Topic :: Text Processing :: Filters",
     "Topic :: Software Development :: Libraries",
     "Typing :: Typed",
 ]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["ruff", "mypy", "pytest", "build", "twine"]
+dev = ["ruff", "mypy", "pytest", "pytest-timeout", "build", "twine", "rich"]
 
 [project.urls]
 Homepage = "https://lianes8studio.com"
-Repository = "https://github.com/JaviLianes8/osc8link"
+Source = "https://github.com/JaviLianes8/osc8link"
 Issues = "https://github.com/JaviLianes8/osc8link/issues"
 Changelog = "https://github.com/JaviLianes8/osc8link/blob/main/CHANGELOG.md"
 LinkedIn = "https://www.linkedin.com/in/jlianes/"
@@ -46,7 +48,13 @@ osc8link = "osc8link._cli:main"
 
 [tool.hatch.build.targets.sdist]
 # Third-party test files are fetched locally and never shipped; only their manifest is.
-exclude = [".github", "IMPROVEMENTS-round*.md", "tests/upstream/*.md", "tests/upstream/*.txt"]
+exclude = [
+    ".github",
+    "IMPROVEMENTS-round*.md",
+    "CERT-1.0-*.md",
+    "tests/upstream/*",
+    "!tests/upstream/MANIFEST.json",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/osc8link"]
@@ -63,6 +71,7 @@ python_version = "3.10"
 strict = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["src", "tests"]
 pythonpath = ["src"]
-addopts = "-q"
+addopts = "-q --doctest-modules"
+timeout = 300

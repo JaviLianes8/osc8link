@@ -6,7 +6,83 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.2.0]
+## [1.0.0] - 2026-10-25
+
+First stable release. The public API is the eleven names in `osc8link.__all__` with the
+signatures in the README, the `Link` fields, the `LinkError` type, the command line
+(`link`, `strip`, `list`, `supports`, exit codes 0, 1 and 2) and the reading and detection
+rules in the GUIDE. They change only in a new major version.
+
+### Added
+
+- `LinkError`, a `ValueError` subclass, raised by `link`, `auto_link` and `encode_url` for
+  arguments they cannot write safely. Code that catches `ValueError` keeps working.
+- `osc8link --version`.
+- `SupportsIsatty`, the typing protocol of the `stream` argument (any object whose
+  `isatty()` returns a `bool`), so a wrapper can annotate its own stream with it.
+- A GUIDE with the reading rules, the detection rules, the command line, the errors and
+  the differences from VTE, xterm.js and `supports-hyperlinks`.
+- Every public name documents a runnable example; the examples run as tests.
+
+### Changed
+
+- `strip`, `contains_link` and `iter_links` take their text as a positional-only
+  argument (`strip(s=...)` no longer works) and raise `TypeError` naming the argument for
+  anything but a `str`. `iter_links` raises at the call, not at the first item.
+- A `terminator` or `fallback` that is not a `str` raises `TypeError` (a non-string
+  terminator raised `ValueError` before). Error messages quote at most 40 characters of
+  the caller's value.
+- DEL inside an OSC 8 sequence is ignored, as VTE ignores it: `ESC ] 8 ; ; http://a DEL b
+  ESC \` now reads as `http://ab` (0.2.0 kept the DEL in the URL).
+- Detection reads numbers in the environment exactly like JavaScript's `parseInt`, as
+  `supports-hyperlinks` does: leading Unicode white space such as U+00A0 or U+FEFF is
+  skipped and only ASCII digits count. `FORCE_HYPERLINK=" 0"` with a no-break space and a
+  `VTE_VERSION` or WezTerm date written in non-ASCII digits gave the opposite answer in
+  0.2.0. `FORCE_COLOR` turns detection off when its leading number is 0 (`00`, ` 0`), not
+  only for the exact text `0`.
+- C0 controls and DEL inside the command number (`ESC ] 8 SOH ; ; URI`, `ESC ] 0 LF 8`) are
+  ignored, as VTE and xterm.js ignore them: such a sequence is a link, which 0.2.0 missed
+  (and left whole in the output of `strip`).
+- `strip` leaves a CAN (U+0018) where a removed sequence had cut short an unfinished escape
+  sequence or control string (`ESC [ 1`, a lone ESC, `ESC P`, an APC string, or VTE's
+  single character introducer `ESC Z` or U+009A, which would take the first character of
+  the text after it), so the text after it cannot complete that escape: the result never
+  draws a link, keeps the visible text and stripping it again changes nothing. 0.2.0 could
+  build a new link out of the text on both sides.
+- `osc8link strip` holds back an opener split over two lines (`ESC`, line break, `]8;;`) and
+  holds an open sequence in linear time (0.2.0 rescanned it for every line, which was
+  quadratic); within the 65,536-character hold limit it gives exactly what `strip` gives on
+  the whole input. The limit counts only the held text, so a long line before it does not
+  matter, and an opener let go at the limit is followed by a CAN, so later lines cannot
+  complete it.
+- `osc8link list` escapes bytes that are not UTF-8 as `\xNN` (0.2.0 wrote them raw,
+  including the 8-bit C1 controls 0x80 to 0x9F).
+- `osc8link link`, `strip` and `list` started without the stdin or stdout they need print a
+  one-line message and exit 2 (0.2.0 ended with a traceback and exit code 1). Started
+  without stderr, every command writes its messages nowhere instead of into stdout, and a
+  usage error still exits 2 (on Python 3.10 it exited 1).
+- A `str` subclass passed to any function is read by its characters alone: its own
+  `__str__`, `__format__` or `__iter__` is never called, so a `(str, Enum)` member is
+  written as its value and the checked text is the written text.
+- `supports_hyperlinks` treats an environment value that is not a `str` as unset, says no
+  for a stream whose `isatty` raises an exception (any `Exception` subclass), and raises
+  `TypeError` for an `env` that is not a `Mapping` (0.2.0 raised `AttributeError`, or
+  accepted an object with `get` and `in`) or a `platform` that is not a `str` (0.2.0 raised
+  from inside `re` or returned an answer).
+- The `stream` of `supports_hyperlinks` and `auto_link` is typed `SupportsIsatty`, any
+  object whose `isatty()` returns a `bool`, instead of `TextIO`, so `IO[str]`,
+  `io.TextIOBase` and other streams pass `mypy --strict`. Nothing changes at run time.
+- `Link`, `LinkError` and `SupportsIsatty` report `osc8link` as their module, so pickles
+  and tracebacks name the public module rather than a private one. `inspect.getsource` on
+  any of them raises `OSError` on every Python version instead of showing a line of
+  `__init__.py` as the source of `SupportsIsatty` (Python 3.13 and later).
+
+### Removed
+
+- The stray `osc8link.annotations` attribute.
+
+
+## [0.2.0] - 2026-10-13
 
 ### Added
 
@@ -38,7 +114,7 @@ All notable changes to this project are documented here. The format follows
   SUB or a C1 control cutting a sequence short. `strip` also removes malformed, cut-short
   and unterminated OSC 8 sequences, as a terminal hides them.
 
-## [0.1.0]
+## [0.1.0] - 2026-10-12
 
 - Add `link` to build an OSC 8 hyperlink from a url and text, with an optional `id`.
 - Add `strip` to remove OSC 8 sequences and keep the visible text.

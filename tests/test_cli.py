@@ -10,7 +10,9 @@ import pytest
 from osc8link import link
 from osc8link._cli import main
 
-SRC = Path(__file__).resolve().parents[1] / "src"
+ROOT = Path(__file__).resolve().parents[1]
+# Run the source tree when there is one, else the installed package (as from the sdist).
+SRC = ROOT / "src" if (ROOT / "src").is_dir() else ROOT / "tests"
 
 
 def run(
@@ -78,9 +80,14 @@ def test_a_missing_command_is_a_usage_error(capsys: pytest.CaptureFixture[str]) 
 
 
 def test_list_escapes_controls_in_both_fields() -> None:
-    # Tabs inside the payload are ignored by terminals; DEL is kept and must be escaped.
-    data = ("\x1b]8;;a\x7fb\tc\x1b\\" + "\x1b[31mX\\\x1b]8;;\x1b\\").encode()
-    assert run("list", stdin=data).stdout == b"a\\x7fbc\t\\x1b[31mX\\\\\n"
+    # Tabs and DEL inside the payload are ignored by terminals; a backslash is escaped.
+    data = ("\x1b]8;;a\x7fb\tc\\d\x1b\\" + "\x1b[31mX\x7f\x85\\\x1b]8;;\x1b\\").encode()
+    assert run("list", stdin=data).stdout == b"abc\\\\d\t\\x1b[31mX\\x7f\\x85\\\\\n"
+
+
+def test_list_writes_a_carriage_return_as_backslash_r() -> None:
+    data = b"\x1b]8;;https://a.test\x1b\\A\rB\x1b]8;;\x1b\\"
+    assert run("list", stdin=data).stdout == b"https://a.test\tA\\rB\n"
 
 
 def test_strip_streams_line_by_line_and_holds_an_open_sequence() -> None:
@@ -130,3 +137,54 @@ def test_help_names_the_arguments_in_capitals(capsys: pytest.CaptureFixture[str]
 
 def test_importing_the_main_module_runs_nothing() -> None:
     import osc8link.__main__  # noqa: F401
+
+
+def test_list_escapes_bytes_that_are_not_utf8() -> None:
+    # Raw 0x9B and 0x9D are CSI and OSC on an 8-bit terminal; U+009B as UTF-8 was always
+    # escaped, and so is every byte that does not decode.
+    data = b"\x1b]8;;https://b.test\x07\xff\x9bZ\x1b]8;;\x07\n"
+    assert run("list", stdin=data).stdout == b"https://b.test\t\\xff\\x9bZ\n"
+    data = b"\x1b]8;;https://a.test/\x9b\x9d\x07T\xc2\x9b31m\x1b]8;;\x07\n"
+    assert run("list", stdin=data).stdout == b"https://a.test/\\x9b\\x9d\tT\\x9b31m\n"
+
+
+def test_an_explicitly_empty_text_is_kept_empty() -> None:
+    result = run("link", "https://a.test", "")
+    assert result.stdout == link("https://a.test", "").encode() + b"\n"
+
+
+def test_strip_holds_an_opener_split_by_a_line_break() -> None:
+    data = b"a\x1b\n]8;;http://x.test\x07T\x1b]8;;\x07\n"
+    assert run("strip", stdin=data).stdout == b"a\nT\n"
+
+
+@pytest.mark.parametrize(
+    ("command", "stream"),
+    [
+        ("link", "stdout"),
+        ("strip", "stdout"),
+        ("list", "stdout"),
+        ("strip", "stdin"),
+        ("list", "stdin"),
+    ],
+)
+def test_a_missing_standard_stream_exits_2_with_a_message(command: str, stream: str) -> None:
+    args = ["link", "https://a.test"] if command == "link" else [command]
+    code = (
+        f"import sys; sys.{stream} = None; from osc8link._cli import main; sys.exit(main({args!r}))"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        check=False,
+        cwd=SRC,
+        stdin=subprocess.DEVNULL,
+    )
+    assert result.returncode == 2
+    assert result.stderr.decode().strip() == f"osc8link: {stream} is closed"
+
+
+def test_supports_answers_no_without_a_stdout(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("FORCE_HYPERLINK", raising=False)
+    monkeypatch.setattr("sys.stdout", None)
+    assert main(["supports"]) == 1

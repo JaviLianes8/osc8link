@@ -6,16 +6,47 @@ import os
 import re
 import sys
 from collections.abc import Mapping
-from typing import TextIO
+from typing import Protocol
+
+from ._errors import exact, type_error
 
 # The spec says a terminal cannot be asked, so this reads the environment, following the
 # rules of the `supports-hyperlinks` package plus the terminals that set a TERM of their own.
 _TERMS = frozenset({"alacritty", "xterm-kitty", "foot", "foot-extra", "xterm-ghostty", "wezterm"})
 _ALWAYS = frozenset({"ghostty", "zed", "Orca", "WarpTerminal"})
+# parseInt skips JavaScript white space and line terminators, then reads ASCII digits only.
+_JS_SPACE = "\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+_LEADING_INT = re.compile(f"[{_JS_SPACE}]*([+-]?)([0-9]+)")
+
+
+class SupportsIsatty(Protocol):
+    """The type of `stream`: any object whose isatty() returns a bool, such as a text stream.
+
+    It is a typing protocol, so a class of one's own needs no base class; detection calls
+    isatty() and nothing else.
+
+    >>> from osc8link import SupportsIsatty, supports_hyperlinks
+    >>> class Pane:
+    ...     def isatty(self) -> bool:
+    ...         return True
+    >>> def shows_links(stream: SupportsIsatty) -> bool:
+    ...     return supports_hyperlinks(stream, env={"TERM_PROGRAM": "ghostty"}, platform="linux")
+    >>> shows_links(Pane())
+    True
+    """
+
+    def isatty(self) -> bool: ...
+
+
+SupportsIsatty.__module__ = "osc8link"
+# Python 3.13+ finds a class's source by __module__ plus __firstlineno__, which would now
+# point into __init__.py; without it inspect fails cleanly, as it does for Link and LinkError.
+if "__firstlineno__" in vars(SupportsIsatty):
+    delattr(SupportsIsatty, "__firstlineno__")
 
 
 def supports_hyperlinks(
-    stream: TextIO | None = None,
+    stream: SupportsIsatty | None = None,
     *,
     env: Mapping[str, str] | None = None,
     platform: str | None = None,
@@ -25,15 +56,34 @@ def supports_hyperlinks(
     stream defaults to sys.stdout, env to os.environ and platform to sys.platform.
     `FORCE_HYPERLINK=1` forces True and `FORCE_HYPERLINK=0` forces False. Otherwise the
     stream must be a TTY, `TERM` must not be `dumb` and colour must not be turned off with
-    `FORCE_COLOR=0`; then Windows Terminal, iTerm2 3.1+, WezTerm, VS Code 1.72+, Ghostty,
-    VTE 0.50.1+, Alacritty, kitty and foot are recognised. CI services give False.
+    `FORCE_COLOR=0` or `false`; then Windows Terminal (`WT_SESSION`, checked first) says
+    True, CI services and other Windows consoles say False, and iTerm2 3.1+, WezTerm, VS
+    Code 1.72+, Ghostty, VTE (except `VTE_VERSION` 5000 or 0.50.0), Alacritty, kitty and
+    foot are recognised. Numbers in the environment are read the way JavaScript's parseInt
+    reads them, as the `supports-hyperlinks` package does. An environment value that is not
+    a str counts as unset and a stream whose isatty fails is not a TTY; an env that is not a
+    Mapping or a platform that is not a str raises TypeError. stream is typed
+    `SupportsIsatty`, any object whose isatty() returns a bool; at run time any other answer
+    is read by its truth value.
+
+    >>> import io
+    >>> supports_hyperlinks(io.StringIO(), env={})
+    False
+    >>> supports_hyperlinks(io.StringIO(), env={"FORCE_HYPERLINK": "1"})
+    True
     """
-    env = os.environ if env is None else env
-    platform = sys.platform if platform is None else platform
+    platform = sys.platform if platform is None else exact("platform", platform)
+    if env is not None and not isinstance(env, Mapping):
+        raise type_error("env", env, "a mapping")
+    values = os.environ if env is None else env
+    env = {key: str.__str__(value) for key, value in values.items() if isinstance(value, str)}
     force = env.get("FORCE_HYPERLINK", "")
     if force:
         return _leading_int(force) != 0
-    if env.get("FORCE_COLOR", "") in ("0", "false") or env.get("TERM") == "dumb":
+    colour = env.get("FORCE_COLOR")
+    if colour is not None and (colour == "false" or _leading_int(colour) == 0):
+        return False
+    if env.get("TERM") == "dumb":
         return False
     if not _isatty(sys.stdout if stream is None else stream):
         return False
@@ -48,7 +98,8 @@ def supports_hyperlinks(
             return known
     vte = env.get("VTE_VERSION", "")
     if vte:
-        # 0.50.0 crashes on some links; VTE writes it as "5000".
+        # 0.50.0 crashes on some links. VTE writes it as "5000"; the package checks only
+        # "0.50.0", and other spellings are read as numbers, as the package reads them.
         if vte in ("5000", "0.50.0"):
             return False
         major, minor, _ = _version(vte)
@@ -61,7 +112,7 @@ def _program(program: str, version: str, env: Mapping[str, str]) -> bool | None:
     if program == "iTerm.app":
         return major > 3 or (major == 3 and minor >= 1)
     if program == "WezTerm":
-        nix = re.fullmatch(r"0-unstable-(\d{4}-\d{2}-\d{2})", version)
+        nix = re.fullmatch(r"0-unstable-([0-9]{4}-[0-9]{2}-[0-9]{2})", version)
         if nix:
             return nix.group(1) >= "2020-06-20"
         return major >= 20200620
@@ -75,7 +126,7 @@ def _program(program: str, version: str, env: Mapping[str, str]) -> bool | None:
 
 def _version(text: str) -> tuple[int, int, int]:
     """Read "3.1.0" as (3, 1, 0) and the dotless "4601" as (0, 46, 1); 0 when unreadable."""
-    packed = re.fullmatch(r"(\d{1,2})(\d{2})", text)
+    packed = re.fullmatch(r"([0-9]{1,2})([0-9]{2})", text)
     if packed:
         return 0, int(packed.group(1)), int(packed.group(2))
     parts = [_leading_int(part) for part in text.split(".")] + [None, None, None]
@@ -85,7 +136,7 @@ def _version(text: str) -> tuple[int, int, int]:
 
 def _leading_int(text: str) -> int | None:
     """Read leading ASCII digits like JavaScript's parseInt; huge values are capped."""
-    match = re.match(r"[ \t\n\r\f\v]*([+-]?)([0-9]+)", text)
+    match = _LEADING_INT.match(text)
     if match is None:
         return None
     digits = match.group(2).lstrip("0") or "0"
@@ -93,8 +144,9 @@ def _leading_int(text: str) -> int | None:
     return -value if match.group(1) == "-" else value
 
 
-def _isatty(stream: TextIO | None) -> bool:
+def _isatty(stream: SupportsIsatty | None) -> bool:
     try:
-        return stream is not None and stream.isatty()
-    except (AttributeError, ValueError, OSError):
+        return stream is not None and bool(stream.isatty())
+    except Exception:
+        # Whatever went wrong, a stream that cannot answer is not a terminal to write to.
         return False
