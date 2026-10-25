@@ -92,7 +92,8 @@ print(repr(strip(text)), contains_link("\x1b]8;;\x1b\\"))
    true otherwise.
 2. `FORCE_COLOR` set to `false`, or to a value whose leading number is 0, says no;
    `TERM=dumb` says no.
-3. A stream that is not a TTY (or whose `isatty` fails, whatever it raises) says no.
+3. A stream that is not a TTY (or whose `isatty` fails, whatever it raises) says no. Any
+   object with an `isatty()` method will do; its answer is read by its truth value.
 4. `WT_SESSION` (Windows Terminal) says yes, even under CI; any other Windows says no;
    `CI` or `TEAMCITY_VERSION` says no.
 5. `TERM_PROGRAM`: iTerm.app 3.1 or later, WezTerm 20200620 or later (also the Nix form
@@ -151,7 +152,7 @@ to stdout, and keep their exit codes (2 for bad input or a usage error).
 
 | Raised | When |
 |---|---|
-| `LinkError` (a `ValueError`) | empty URL; URL with a lone surrogate; id with `:`, `;` or a character outside 32 to 126; text with a control string; unknown terminator |
+| `LinkError` (a `ValueError`) | empty URL (`link`, `auto_link`); URL with a lone surrogate (also `encode_url`); id with `:`, `;` or a character outside 32 to 126; text with a control string; unknown terminator |
 | `TypeError` | any argument of `link`, `auto_link`, `encode_url`, `strip`, `contains_link` or `iter_links` that is not a `str`; a `platform` of `supports_hyperlinks` that is not a `str` |
 
 Messages name the argument and quote at most 40 characters of it. A `str` subclass is

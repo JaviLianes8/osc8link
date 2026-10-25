@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import re
-from typing import Literal, TextIO
+from typing import Literal
 from urllib.parse import quote
 
-from ._detect import supports_hyperlinks
+from ._detect import SupportsIsatty, supports_hyperlinks
 from ._errors import LinkError, exact, quote_short
 
 Terminator = Literal["st", "bel"]
@@ -50,7 +50,7 @@ def auto_link(
     url: str,
     text: str,
     *,
-    stream: TextIO | None = None,
+    stream: SupportsIsatty | None = None,
     fallback: str = "{text} ({url})",
     id: str | None = None,
     terminator: Terminator = "st",

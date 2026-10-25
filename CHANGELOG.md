@@ -65,6 +65,9 @@ rules in the GUIDE. They change only in a new major version.
 - `supports_hyperlinks` treats an environment value that is not a `str` as unset, says no
   for a stream whose `isatty` raises anything, and raises `TypeError` for a `platform` that
   is not a `str` (0.2.0 raised from inside `re` or returned an answer).
+- The `stream` of `supports_hyperlinks` and `auto_link` is typed as any object with an
+  `isatty()` method instead of `TextIO`, so `IO[str]`, `io.TextIOBase` and other streams
+  pass `mypy --strict`. Nothing changes at run time.
 - `Link` and `LinkError` report `osc8link` as their module, so pickles and tracebacks name
   the public module rather than a private one.
 

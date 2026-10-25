@@ -9,6 +9,7 @@ import inspect
 import pickle
 import re
 import types
+import typing
 from pathlib import Path
 
 import osc8link
@@ -33,14 +34,14 @@ PUBLIC_API: list[str] = [
 SIGNATURES: dict[str, str] = {
     "link": "(url: 'str', text: 'str', *, id: 'str | None' = None, "
     "terminator: 'Terminator' = 'st') -> 'str'",
-    "auto_link": "(url: 'str', text: 'str', *, stream: 'TextIO | None' = None, "
+    "auto_link": "(url: 'str', text: 'str', *, stream: 'SupportsIsatty | None' = None, "
     "fallback: 'str' = '{text} ({url})', id: 'str | None' = None, "
     "terminator: 'Terminator' = 'st') -> 'str'",
     "encode_url": "(url: 'str') -> 'str'",
     "strip": "(s: 'str', /) -> 'str'",
     "contains_link": "(s: 'str', /) -> 'bool'",
     "iter_links": "(s: 'str', /) -> 'Iterator[Link]'",
-    "supports_hyperlinks": "(stream: 'TextIO | None' = None, *, "
+    "supports_hyperlinks": "(stream: 'SupportsIsatty | None' = None, *, "
     "env: 'Mapping[str, str] | None' = None, platform: 'str | None' = None) -> 'bool'",
     "Link": "(url: 'str', text: 'str', id: 'str | None' = None, "
     "params: 'tuple[tuple[str, str], ...]' = ()) -> None",
@@ -69,6 +70,8 @@ def test_nothing_else_public_lives_on_the_package() -> None:
 def test_every_public_function_keeps_its_signature() -> None:
     for name, expected in SIGNATURES.items():
         assert str(inspect.signature(getattr(osc8link, name))) == expected, name
+        # Every annotation resolves at run time, for tools that read them.
+        assert typing.get_type_hints(getattr(osc8link, name)), name
 
 
 def test_link_fields_and_error_type_are_fixed() -> None:

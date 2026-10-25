@@ -6,7 +6,7 @@ import os
 import re
 import sys
 from collections.abc import Mapping
-from typing import TextIO
+from typing import Protocol
 
 from ._errors import exact
 
@@ -19,8 +19,14 @@ _JS_SPACE = "\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\
 _LEADING_INT = re.compile(f"[{_JS_SPACE}]*([+-]?)([0-9]+)")
 
 
+class SupportsIsatty(Protocol):
+    """Any object with an isatty() method, such as a text stream: all detection asks of it."""
+
+    def isatty(self) -> bool: ...
+
+
 def supports_hyperlinks(
-    stream: TextIO | None = None,
+    stream: SupportsIsatty | None = None,
     *,
     env: Mapping[str, str] | None = None,
     platform: str | None = None,
@@ -36,7 +42,8 @@ def supports_hyperlinks(
     foot are recognised. Numbers in the environment are read the way JavaScript's parseInt
     reads them, as the `supports-hyperlinks` package does. An environment value that is not
     a str counts as unset and a stream whose isatty fails is not a TTY; a platform that is
-    not a str raises TypeError.
+    not a str raises TypeError. stream may be any object with an isatty() method, whose
+    answer is read by its truth value.
 
     >>> import io
     >>> supports_hyperlinks(io.StringIO(), env={})
@@ -114,7 +121,7 @@ def _leading_int(text: str) -> int | None:
     return -value if match.group(1) == "-" else value
 
 
-def _isatty(stream: TextIO | None) -> bool:
+def _isatty(stream: SupportsIsatty | None) -> bool:
     try:
         return stream is not None and bool(stream.isatty())
     except Exception:

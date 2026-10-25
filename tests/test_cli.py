@@ -85,6 +85,11 @@ def test_list_escapes_controls_in_both_fields() -> None:
     assert run("list", stdin=data).stdout == b"abc\\\\d\t\\x1b[31mX\\x7f\\x85\\\\\n"
 
 
+def test_list_writes_a_carriage_return_as_backslash_r() -> None:
+    data = b"\x1b]8;;https://a.test\x1b\\A\rB\x1b]8;;\x1b\\"
+    assert run("list", stdin=data).stdout == b"https://a.test\tA\\rB\n"
+
+
 def test_strip_streams_line_by_line_and_holds_an_open_sequence() -> None:
     process = subprocess.Popen(
         [sys.executable, "-m", "osc8link", "strip"],
