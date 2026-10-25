@@ -172,3 +172,35 @@ none skipped) each exit 0.
 ### Disputed findings
 
 None.
+
+## Round 6 (reviewed at d9def39)
+
+Lens a ran every README, GUIDE and docstring example, about 110 probes of the documented
+rules, the command line by subprocess, 30,000 seeded stream texts and the 0.2.0 upgrade
+claims, and reported four findings. Lens e ran a fresh blind mutation round and reported
+three survivors on correct code. All seven are fixed; none is disputed.
+
+| Finding | Fix | Contract |
+| --- | --- | --- |
+| A1 `encode_url("")` does not raise | README: `link` and `auto_link` raise `LinkError` for an empty URL, `encode_url` only for a lone surrogate; the GUIDE error table names the functions | docs only (`encode_url("")` returns `''`, as before) |
+| A2 exit 2 for a missing stream | README: a missing stdin or stdout exits 2 only when `link`, `strip` or `list` needs it, as the GUIDE and CHANGELOG say | docs only |
+| A3 C0 controls between ESC and `]` | README: C0 controls other than CAN and SUB do not break the opener, as the GUIDE table says | docs only |
+| A4 `stream` typed `TextIO \| None` | `stream` of `supports_hyperlinks` and `auto_link` is typed with a protocol (`SupportsIsatty`, any object with `isatty()`); README, GUIDE and CHANGELOG say so; nothing changes at run time | test_typing::test_any_object_with_isatty_is_a_stream: `IO[str]`, `io.TextIOBase` and a class of one's own pass `mypy --strict`, an `int` is still rejected; test_contract: new signatures and every annotation resolves with `get_type_hints` |
+| F1-D34 default platform untested | contracts only | test_detect_defaults::test_the_platform_defaults_to_sys_platform: with `sys.platform` patched to `win32` the same tty and `TERM_PROGRAM=ghostty` say False, with `linux` True |
+| F2-D32 truthy `isatty` untested | contracts only; README and GUIDE say the answer is read by its truth value | test_detect_defaults::test_isatty_is_read_by_its_truth_value: `1` and `"yes"` say True, `0` and `""` say False |
+| F3-L30 CR in `list` untested | contracts only | test_cli::test_list_writes_a_carriage_return_as_backslash_r: link text `A` CR `B` comes out as `A\rB` |
+
+The new typing contract fails on d9def39 (mypy reports both `IO[str]` and `TextIOBase`
+calls) and passes after the fix. Each lens e survivor applied alone to a copy of the fixed
+tree fails its new contract: D34 (`"linux"` as the default) the `win32` case, D32
+(`isatty() is True`) the `1` and `"yes"` cases, L30 (CR written as `\x0d`) the CR test; the
+unmutated tree passes them. The annotations also resolve on CPython 3.10.19.
+
+Fix commit: 4d8028e. At that commit on this PC, with every fetched source, the node
+oracles, Rich and `OSC8LINK_E2E=1`: `ruff format --check .`, `ruff check .`,
+`mypy --strict src`, `mypy --strict src tests` and `pytest` (CPython 3.13.2, 886 passed,
+none skipped) each exit 0.
+
+### Disputed findings
+
+None.

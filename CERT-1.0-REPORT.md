@@ -139,9 +139,10 @@ then were killed. The table of all 56, with the test that kills each one, is in
 At 1c1f914 on this PC (CPython 3.13.2), each command on its own, with every fetched source,
 the node oracles, Rich and `OSC8LINK_E2E=1`: `ruff format --check .`, `ruff check .`,
 `mypy --strict src`, `mypy --strict src tests` and `pytest` (878 passed, none skipped,
-doctests included) all exit 0. The library code is unchanged since 63c1848; a63c871 and
-1c1f914 add only tests. Without the fetched files the tests that need them skip
-cleanly, as in a fresh clone.
+doctests included) all exit 0. Without the fetched files the tests that need them skip
+cleanly, as in a fresh clone. At 4d8028e (QA round 6: the `stream` annotation, docs and
+new contracts; no run-time change since 63c1848) the same five commands exit 0 with 886
+passed, none skipped.
 
 ## QA lenses (item 19)
 
@@ -167,7 +168,10 @@ reporting only to the maintainer. Every finding, its fix and its contract are in
 | e | 3 | 81ba3fa | FAIL | e-H1, e-H2 (survivors M31, M07 in the let-go branch), M22 equivalent; contracts in 63c1848 |
 | e | 4 | dbb91d6 | FAIL | e-F1 to e-F6 (survivors S16, D22, L14, D15, G08, E07, E08, E02), B02 equivalent; contracts in a63c871 |
 | e | 5 | 0fbe619 | FAIL | round 4 findings confirmed fixed; e-N1 to e-N3 (survivors Q03, Q07, Q10 of 10 probes); contracts in 1c1f914 |
-| e | 6 | | pending | |
+| a | 3 | d9def39 | FAIL | A1 to A3 (README wording), A4 (`stream` typed narrower than the runtime accepts); fixed in 4d8028e |
+| e | 6 | d9def39 | FAIL | F1-D34, F2-D32, F3-L30 (survivors on correct code: default platform, truthy `isatty`, CR in `list`); contracts in 4d8028e |
+| a | 4 | | pending | |
+| e | 7 | | pending | |
 
 ## Independent review (item 16)
 
