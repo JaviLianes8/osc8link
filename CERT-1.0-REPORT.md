@@ -146,7 +146,9 @@ passed, none skipped. At 128a6ee (QA round 7: `SupportsIsatty` exported, docs an
 contracts; no run-time change to detection or building) the same five commands exit 0
 with 893 passed, none skipped. At bf47e23 (QA round 8: `inspect` on `SupportsIsatty` and
 two new contracts; no change to detection or building) the same five commands exit 0
-with 897 passed, none skipped.
+with 897 passed, none skipped. At 8b0765c (QA round 9: `TypeError` for an `env` that is
+not a `Mapping`, docs and new contracts; no other change to detection or building) the
+same five commands exit 0 with 906 tests collected.
 
 ## QA lenses (item 19)
 
@@ -178,7 +180,8 @@ reporting only to the maintainer. Every finding, its fix and its contract are in
 | e | 7 | df003da | FAIL | F1-Q14, F2-Q11, F3-Q03 (survivors on correct code: `auto_link` platform, an `isatty` answer without a truth value, the `isatty` return type); contracts in 128a6ee |
 | a | 5 | 0d289ee | FAIL | N1 and N2 confirmed fixed; N3 (`inspect.getsource` of `SupportsIsatty` shows a line of `__init__.py` on Python 3.13+); fixed in bf47e23 |
 | e | 8 | 0d289ee | FAIL | round 7 findings confirmed fixed; N1-S14, N2-S18-S21 (survivors on correct code: an interrupt inside `isatty`, a falsy stream); contracts in bf47e23 |
-| a | 6 | | pending | |
+| a | 6 | 9b963c3 | FAIL | A1 (`env` that is not a mapping raised `AttributeError`), A2 (docs overclaimed which arguments raise `TypeError`); fixed in 8b0765c |
+| a | 7 | | pending | |
 | e | 9 | d30ce21 | PASS | round 8 survivors and earlier findings rerun, all killed; five-mutant sweep on the changed `inspect` block, no survivor |
 
 ## Independent review (item 16)

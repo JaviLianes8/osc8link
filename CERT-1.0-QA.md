@@ -263,3 +263,29 @@ none skipped) each exit 0.
 ### Disputed findings
 
 None.
+
+## Round 9 (reviewed at 9b963c3)
+
+Lens a ran every gate, 31 doctests against an installed copy, an external consumer under
+`mypy --strict`, every README and GUIDE example and claim, the command line by subprocess
+and a seeded differential against 0.2.0, and reported two findings. Both are fixed; none
+is disputed.
+
+| Finding | Fix | Contract |
+| --- | --- | --- |
+| A1 an `env` that is not a mapping raised `AttributeError` | `supports_hyperlinks` raises `TypeError("env must be a mapping, not <type>")`, the type name cut to 40 characters, for an `env` that is neither `None` nor a `collections.abc.Mapping`; checked after `platform`; docstring, README, GUIDE errors table, detection rules, upgrade section and CHANGELOG line | test_detect_defaults::test_detection_rejects_an_env_that_is_not_a_mapping (an int, a str, a list of pairs, an object with only `items()`), test_an_env_type_name_is_cut_in_the_message, test_detection_accepts_any_mapping_as_env (`dict`, `MappingProxyType`, `ChainMap`), test_detection_accepts_os_environ_as_env |
+| A2 "every argument that is not a `str`" overclaimed | README and the GUIDE errors table name the checked arguments (`url`, `text`, `fallback`, `terminator`, an `id` other than `None`, the text of `strip`, `contains_link` and `iter_links`); the GUIDE says the `stream` is never type-checked | docs only |
+
+The five rejection contracts fail on 9b963c3 (each with `AttributeError` from
+`values.items()`) and pass after the fix. 0.2.0 (9b06ecf) was run for the CHANGELOG line:
+an int, a str or a list raised `AttributeError` there too, and an object with only `get`
+and `__contains__` was accepted; it now raises `TypeError`, and the upgrade section says so.
+
+Fix commit: 8b0765c. At that commit on this PC, with every fetched source, the node
+oracles, Rich and `OSC8LINK_E2E=1`: `ruff format --check .`, `ruff check .`,
+`mypy --strict src`, `mypy --strict src tests` and `pytest` (CPython 3.13.2, 906 tests
+collected) each exit 0.
+
+### Disputed findings
+
+None.
