@@ -15,8 +15,8 @@ Progress:
 - [x] Docs: README, GUIDE, CHANGELOG (items 11, 12)
 - [x] Packaging, e2e and every Python on this PC (items 8, 10, 13, 14)
 - [x] Gates (item 15)
-- [ ] Five QA lenses report PASS (item 19)
-- [ ] Independent reviewer reports PASS (item 16)
+- [x] Five QA lenses report PASS (item 19)
+- [x] Independent reviewer reports PASS (item 16)
 - [ ] PR merged and published by the maintainer (item 17)
 
 ## Scorecard
@@ -38,10 +38,10 @@ Progress:
 | 13 | pyproject 1.0.0, Production/Stable | PASS: classifiers 3.10 to 3.14, MIT, Homepage/Source/Issues/Changelog, keywords, `dependencies = []` (tested) |
 | 14 | sdist and wheel contents | PASS: see Packaging |
 | 15 | Gates each exit 0 | PASS: see Gates |
-| 16 | Independent reviewer | pending |
-| 17 | PR and trace guard | PR #3 from `release/1.0.0`, trace guard CLEAN; merge and publish left to the maintainer |
+| 16 | Independent reviewer | PASS: at 448e781, every item below scored PASS |
+| 17 | PR and trace guard | PASS: PR #3 from `release/1.0.0`, trace guard CLEAN; merge and publish left to the maintainer |
 | 18 | Contracts bite (mutations) | PASS: 56 author mutants, all killed (3 after new contracts) |
-| 19 | Five independent QA lenses | pending |
+| 19 | Five independent QA lenses | PASS: all five lenses, see QA lenses |
 
 ## Baseline on 0.2.0 (before any change)
 
@@ -181,9 +181,49 @@ reporting only to the maintainer. Every finding, its fix and its contract are in
 | a | 5 | 0d289ee | FAIL | N1 and N2 confirmed fixed; N3 (`inspect.getsource` of `SupportsIsatty` shows a line of `__init__.py` on Python 3.13+); fixed in bf47e23 |
 | e | 8 | 0d289ee | FAIL | round 7 findings confirmed fixed; N1-S14, N2-S18-S21 (survivors on correct code: an interrupt inside `isatty`, a falsy stream); contracts in bf47e23 |
 | a | 6 | 9b963c3 | FAIL | A1 (`env` that is not a mapping raised `AttributeError`), A2 (docs overclaimed which arguments raise `TypeError`); fixed in 8b0765c |
-| a | 7 | | pending | |
 | e | 9 | d30ce21 | PASS | round 8 survivors and earlier findings rerun, all killed; five-mutant sweep on the changed `inspect` block, no survivor |
+| a | 7 | 448e781 | PASS | A1 and A2 confirmed fixed; 36 probes on the new `env` check, 0.2.0 run for the upgrade notes; no new findings |
+
+Final verdicts. Each lens report went to the maintainer only; its findings, fixes and
+contracts are recorded round by round in CERT-1.0-QA.md.
+
+| Lens | Rounds | Final verdict | Report | Commit |
+| --- | --- | --- | --- | --- |
+| a. API and docs | 7 | PASS | CERT-1.0-QA.md | 448e781 |
+| b. Correctness and ground truth | 3 | PASS | CERT-1.0-QA.md | 81ba3fa |
+| c. Adversarial and robustness | 3 | PASS | CERT-1.0-QA.md | 81ba3fa |
+| d. Packaging and real e2e | 3 | PASS | CERT-1.0-QA.md | 81ba3fa |
+| e. Contract strength (blind) | 9 | PASS | CERT-1.0-QA.md | d30ce21 |
+
+Every change after 81ba3fa and d30ce21 was a fix for lens a or lens e findings with its
+own contracts; the independent review below re-ran the whole bar on 448e781.
 
 ## Independent review (item 16)
 
-Pending.
+A fresh reviewer audited `release/1.0.0` at 448e781 against the 19 items, running each
+one, and reported to the maintainer only. Verdict: PASS, no findings. Its own mutation
+round (14 mutants R01 to R14 on detection, encoding, `id` checks, error messages, the
+reader and `auto_link`, among them the new `env` check) was killed whole, each mutant by
+a named test.
+
+| # | Item | Reviewer |
+| --- | --- | --- |
+| 1 | Public API reviewed for stability | PASS |
+| 2 | `__all__` exact, no private imports in docs | PASS |
+| 3 | Docstrings with runnable examples, doctests | PASS |
+| 4 | Typed end to end | PASS |
+| 5 | Typed, documented, bounded errors | PASS |
+| 6 | Contract tests of every public name | PASS |
+| 7 | Real ground truth | PASS |
+| 8 | Real e2e from the wheel | PASS |
+| 9 | Seeded fuzz, no crash, hang or blowup | PASS |
+| 10 | Supported Pythons | PASS |
+| 11 | README and `twine check` | PASS |
+| 12 | Dated CHANGELOG section | PASS |
+| 13 | pyproject 1.0.0, Production/Stable | PASS |
+| 14 | sdist and wheel contents | PASS |
+| 15 | Gates each exit 0 | PASS |
+| 16 | Independent reviewer | PASS |
+| 17 | PR from `release/1.0.0`, trace guard | PASS |
+| 18 | Contracts bite (mutations) | PASS |
+| 19 | Five independent QA lenses | PASS |

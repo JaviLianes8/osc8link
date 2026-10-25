@@ -289,3 +289,19 @@ collected) each exit 0.
 ### Disputed findings
 
 None.
+
+## Round 10 (reviewed at 448e781)
+
+Lens a re-ran A1 and A2 of round 9 and swept the new `env` check with 36 probes: falsy
+values that are not mappings (`0`, `False`, `""`, bytes, a set) raise `TypeError`, every
+standard mapping type is accepted, `env={}` does not fall back to `os.environ`, and the
+0.2.0 source was run to confirm the upgrade notes. Doctests, `mypy --strict`, `ruff check`
+and `ruff format --check` were clean. Verdict: PASS, no new findings.
+
+The independent reviewer audited the same commit against the 19 items of the bar and ran
+its own 14 mutants; every mutant was killed and every item scored PASS
+(CERT-1.0-REPORT.md, item 16).
+
+### Disputed findings
+
+None.
