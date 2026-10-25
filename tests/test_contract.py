@@ -107,6 +107,17 @@ def test_public_classes_name_the_public_module() -> None:
     assert b"_errors" not in pickle.dumps(osc8link.LinkError("bad id"))
 
 
+def test_the_source_of_a_public_class_is_its_own_or_none() -> None:
+    # __module__ names the package, so inspect may look in __init__.py; it must then fail
+    # cleanly rather than show some other line as the class source.
+    for cls in (osc8link.Link, osc8link.LinkError, osc8link.SupportsIsatty):
+        try:
+            source = inspect.getsource(cls)
+        except OSError:
+            continue
+        assert source.startswith(f"class {cls.__name__}"), (cls, source[:60])
+
+
 def test_every_public_name_documents_a_runnable_example() -> None:
     finder = doctest.DocTestFinder()
     for name in PUBLIC_API:

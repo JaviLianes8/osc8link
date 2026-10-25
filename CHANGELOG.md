@@ -72,7 +72,9 @@ rules in the GUIDE. They change only in a new major version.
   object whose `isatty()` returns a `bool`, instead of `TextIO`, so `IO[str]`,
   `io.TextIOBase` and other streams pass `mypy --strict`. Nothing changes at run time.
 - `Link`, `LinkError` and `SupportsIsatty` report `osc8link` as their module, so pickles
-  and tracebacks name the public module rather than a private one.
+  and tracebacks name the public module rather than a private one. `inspect.getsource` on
+  any of them raises `OSError` on every Python version instead of showing a line of
+  `__init__.py` as the source of `SupportsIsatty` (Python 3.13 and later).
 
 ### Removed
 

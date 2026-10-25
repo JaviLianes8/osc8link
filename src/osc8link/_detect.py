@@ -39,6 +39,10 @@ class SupportsIsatty(Protocol):
 
 
 SupportsIsatty.__module__ = "osc8link"
+# Python 3.13+ finds a class's source by __module__ plus __firstlineno__, which would now
+# point into __init__.py; without it inspect fails cleanly, as it does for Link and LinkError.
+if "__firstlineno__" in vars(SupportsIsatty):
+    delattr(SupportsIsatty, "__firstlineno__")
 
 
 def supports_hyperlinks(
