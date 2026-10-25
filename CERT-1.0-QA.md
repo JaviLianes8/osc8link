@@ -116,3 +116,33 @@ none skipped) each exit 0.
 ### Disputed findings
 
 None.
+
+## Round 4 (reviewed at dbb91d6)
+
+Lens e ran a fresh blind mutation round of 116 mutants: 107 killed, B02 (`~`
+percent-encoded) equivalent, and 8 survivors on correct code. Each survivor is a missing
+contract, so no behaviour changed and the CHANGELOG is unchanged. All six findings are
+fixed; none is disputed.
+
+| Finding | Fix | Contract |
+| --- | --- | --- |
+| e-F1 (S16) the fast path for a held sequence with payload text | contracts only | test_hold::test_holding_scans_each_character_a_bounded_number_of_times now also holds an open sequence through 20,000 payload lines (`x`), a mix of payload, ENQ and line breaks, and a U+009D opener with DEL inside the payload; the timing test also streams 30,000 payload lines |
+| e-F2 (D22) `env={}` read as the process environment | contracts only | test_detect::test_an_empty_env_is_read_as_is_not_as_the_process_environment: `FORCE_HYPERLINK=1` and `WT_SESSION` set in the process environment, `env={}` says False |
+| e-F3 (L14) a gone reader with short output | contracts only | test_cli_edges::test_a_reader_gone_before_a_short_output_ends_the_command_quietly: `list`, `strip` and `link` with stdout closed before the first write exit 0 with an empty stderr |
+| e-F4 (D15) 3-digit packed `VTE_VERSION` | contracts only | test_oracle_detect: `502` and `999` say False, recorded and checked against the package by the node oracle |
+| e-F5 (G08) an OSC number other than 0 or 8 after a held opener | contracts only | test_hold_limit::test_a_held_opener_broken_by_another_command_number_goes_out_at_once: `ESC ]` and U+009D followed by `1`, `9` and `18` go out on the line that breaks them |
+| e-F6 (E07, E08, E02) the 40-character quote | contracts only | test_errors::test_messages_quote_at_most_40_characters: the exact message for a 40-character value (quoted whole) and a 41-character one (first 40 and `... (41 characters)`), for `link` and `auto_link` |
+
+Each survivor applied alone to the fixed tree fails the new contracts: S16 the payload
+scan case, D22 the empty env test, L14 all 3 commands, D15 both versions, G08 every
+number tried, E07 and E08 the 41-character case, E02 the 40-character case; the unmutated
+tree passes them.
+
+Contract commit: a63c871. At that commit on this PC, with every fetched source, the node
+oracles, Rich and `OSC8LINK_E2E=1`: `ruff format --check .`, `ruff check .`,
+`mypy --strict src`, `mypy --strict src tests` and `pytest` (CPython 3.13.2, 866 passed,
+none skipped) each exit 0.
+
+### Disputed findings
+
+None.

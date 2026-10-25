@@ -136,11 +136,11 @@ then were killed. The table of all 56, with the test that kills each one, is in
 
 ## Gates (item 15)
 
-At f844a2e on this PC (CPython 3.13.2), each command on its own, with every fetched source,
+At a63c871 on this PC (CPython 3.13.2), each command on its own, with every fetched source,
 the node oracles, Rich and `OSC8LINK_E2E=1`: `ruff format --check .`, `ruff check .`,
-`mypy --strict src`, `mypy --strict src tests` and `pytest` (846 passed, none skipped,
-doctests included) all exit 0. The code is unchanged since 63c1848, where the same run
-gave the same result. Without the fetched files the tests that need them skip
+`mypy --strict src`, `mypy --strict src tests` and `pytest` (866 passed, none skipped,
+doctests included) all exit 0. The library code is unchanged since 63c1848; a63c871 adds
+only tests. Without the fetched files the tests that need them skip
 cleanly, as in a fresh clone.
 
 ## QA lenses (item 19)
@@ -165,7 +165,8 @@ reporting only to the maintainer. Every finding, its fix and its contract are in
 | e. Contract strength (blind) | 1 | 3ac1c24 | FAIL | e-F1 to e-F3 and three surviving mutants; contracts in 8bdf85e |
 | e | 2 | d444d16 | FAIL | e-G1 to e-G4, missing contracts on correct code; contracts in 89b1a0c |
 | e | 3 | 81ba3fa | FAIL | e-H1, e-H2 (survivors M31, M07 in the let-go branch), M22 equivalent; contracts in 63c1848 |
-| e | 4 | | pending | |
+| e | 4 | dbb91d6 | FAIL | e-F1 to e-F6 (survivors S16, D22, L14, D15, G08, E07, E08, E02), B02 equivalent; contracts in a63c871 |
+| e | 5 | | pending | |
 
 ## Independent review (item 16)
 
