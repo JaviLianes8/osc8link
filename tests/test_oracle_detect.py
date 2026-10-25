@@ -86,6 +86,9 @@ VALUES: dict[str, list[str]] = {
 PLATFORMS = ["linux", "darwin", "freebsd", "win32"]
 
 RECORDED: list[tuple[dict[str, str], bool]] = [
+    ({"TERM": "xterm", "VTE_VERSION": "00100"}, True),
+    ({"TERM": "xterm", "TERM_PROGRAM": "iTerm.app", "TERM_PROGRAM_VERSION": "30100"}, True),
+    ({"TERM": "xterm", "TERM_PROGRAM": "vscode", "TERM_PROGRAM_VERSION": "10072"}, True),
     ({"TERM": "xterm", "FORCE_HYPERLINK": NBSP + "0"}, False),
     ({"TERM": "xterm", "FORCE_HYPERLINK": BOM + "0"}, False),
     ({"TERM": "xterm", "FORCE_HYPERLINK": LS + "0"}, False),

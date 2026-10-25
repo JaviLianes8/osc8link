@@ -65,6 +65,8 @@ def test_an_open_sequence_just_under_the_limit_is_held_whole() -> None:
 # An opener and the lines that keep it open: line breaks, payload text, or both mixed.
 HELD = [(opener, ["\n"]) for opener in [OPENER, "\x1b\n", "\x1b]\n", "\x1b]8\n", "\x9d0\n"]]
 HELD += [(OPENER, ["x\n"]), (OPENER, ["x\n", "\x05\n", "\n"]), ("\x9d8;\n", ["x\x7fy\n"])]
+# An empty payload followed by runs of ignored controls, as CRLF input gives on every line.
+HELD += [("\x1b]8\n", ["\r\n"]), ("\x9d8\n", ["\x05\x06\n"]), ("\x1b]8\r\n", ["\r\n"])]
 
 
 @pytest.mark.parametrize(("opener", "body"), HELD)
@@ -90,9 +92,13 @@ def test_holding_scans_each_character_a_bounded_number_of_times(
     assert scanned <= 4 * len("".join(lines))
 
 
-@pytest.mark.parametrize("body", ["\n", "x\n"])
-def test_a_hostile_open_sequence_streams_about_as_fast_as_plain_text(body: str) -> None:
-    hostile = ([OPENER] + [body] * 30_000) * 2
+@pytest.mark.parametrize(
+    ("opener", "body"), [(OPENER, "\n"), (OPENER, "x\n"), ("\x1b]8\r\n", "\r\n")]
+)
+def test_a_hostile_open_sequence_streams_about_as_fast_as_plain_text(
+    opener: str, body: str
+) -> None:
+    hostile = ([opener] + [body] * 30_000) * 2
     plain = ["line\n"] * (len(hostile) // 2)
     start = time.perf_counter()
     _stream(plain)

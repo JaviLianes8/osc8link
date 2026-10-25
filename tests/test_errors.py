@@ -107,6 +107,19 @@ def test_a_type_name_in_a_message_is_cut_short() -> None:
     assert len(str(caught.value)) < LIMIT
 
 
+@pytest.mark.parametrize("size", [40, 41])
+def test_a_type_name_is_quoted_up_to_40_characters(size: int) -> None:
+    odd = type("K" * size, (), {})()
+    expected = "K" * 40
+    assert _message(link, "https://a.test", odd) == (
+        TypeError,
+        f"text must be a str, not {expected}",
+    )
+    with pytest.raises(TypeError) as caught:
+        strip(odd)
+    assert str(caught.value) == f"s must be a str, not {expected}"
+
+
 def test_detection_never_raises_on_odd_environment_values() -> None:
     odd = (chr(0x665), chr(0xFEFF) + "7", chr(0xA0) + "0")
     for value in ("", "\x00", HUGE, "9" * 5000, "-", "+", " ", *odd):
