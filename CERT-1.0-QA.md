@@ -146,3 +146,29 @@ none skipped) each exit 0.
 ### Disputed findings
 
 None.
+
+## Round 5 (reviewed at 0fbe619)
+
+Lens e reapplied the eight round 4 survivors (all now killed) and swept the changed
+functions with 10 new probes: 7 killed, 3 survivors on correct code. Each survivor is a
+missing contract, so no behaviour changed and the CHANGELOG is unchanged. All three
+findings are fixed; none is disputed.
+
+| Finding | Fix | Contract |
+| --- | --- | --- |
+| e-N1 (Q03) the fast path for an empty held payload followed by two or more ignored controls, as CRLF input gives | contracts only | test_hold::test_holding_scans_each_character_a_bounded_number_of_times now holds `ESC ] 8` and U+009D `8` openers through `\r\n` and ENQ ACK lines; the timing test also streams 30,000 `\r\n` lines after a CRLF opener |
+| e-N2 (Q07) five-digit dotless versions | contracts only | test_oracle_detect: `VTE_VERSION=00100`, iTerm.app `30100` and vscode `10072` say True, recorded and checked against the package by the node oracle |
+| e-N3 (Q10) the 40-character cut of a type name | contracts only | test_errors::test_a_type_name_is_quoted_up_to_40_characters: the exact `TypeError` message of `link` and `strip` for a class whose name is 40 and 41 characters long |
+
+Each survivor applied alone to the fixed tree fails the new contracts: Q03 the three new
+scan cases and the CRLF timing case, Q07 all three recorded versions, Q10 the
+41-character case; the unmutated tree passes them.
+
+Contract commit: 1c1f914. At that commit on this PC, with every fetched source, the node
+oracles, Rich and `OSC8LINK_E2E=1`: `ruff format --check .`, `ruff check .`,
+`mypy --strict src`, `mypy --strict src tests` and `pytest` (CPython 3.13.2, 878 passed,
+none skipped) each exit 0.
+
+### Disputed findings
+
+None.

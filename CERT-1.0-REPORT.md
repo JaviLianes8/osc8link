@@ -32,7 +32,7 @@ Progress:
 | 7 | Real ground truth | PASS: see below |
 | 8 | Real e2e from the wheel | PASS: wheel in a fresh venv driven from an empty folder, console script and `python -m`; no PyPI release to upgrade from |
 | 9 | Seeded fuzz, no crash, hang or blowup | PASS |
-| 10 | Supported Pythons | PASS: CPython 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2, 3.14.2t |
+| 10 | Supported Pythons | PASS: CPython 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2, 3.14.2t (at 1c1f914) |
 | 11 | README and `twine check` | PASS: `twine check --strict`, absolute links and badge tested |
 | 12 | Dated CHANGELOG section | PASS: 1.0.0, 2026-10-25 |
 | 13 | pyproject 1.0.0, Production/Stable | PASS: classifiers 3.10 to 3.14, MIT, Homepage/Source/Issues/Changelog, keywords, `dependencies = []` (tested) |
@@ -120,7 +120,7 @@ then were killed. The table of all 56, with the test that kills each one, is in
 
 ## Packaging, e2e and Pythons (items 8, 10, 13, 14)
 
-- Fresh clone of b0d3e15: `python -m build` and `twine check --strict` PASSED for both
+- Fresh clone of 1c1f914: `python -m build` and `twine check --strict` PASSED for both
   files. Wheel: the package, `py.typed`, LICENSE under `licenses/`, metadata, the console
   script. sdist: source, tests (with the oracle drivers and the manifest only), README,
   GUIDE, CHANGELOG, CONTRIBUTING, LICENSE, scripts; no fetched files, node packages,
@@ -128,7 +128,7 @@ then were killed. The table of all 56, with the test that kills each one, is in
 - Every interpreter on this PC from `requires-python` up, the wheel installed in a fresh
   venv and the sdist's own suite run with `src` removed (fetched sources, node oracles and
   Rich present): CPython 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2 and 3.14.2
-  free-threaded, 540 passed and 1 skipped each (the installed-wheel test, which builds
+  free-threaded, 867 passed and 1 skipped each (the installed-wheel test, which builds
   from the source tree and runs on its own). 3.8 and 3.9 are below `requires-python`.
 - `OSC8LINK_E2E=1`: the wheel and sdist are built and inspected, the wheel installed in a
   fresh venv and driven from an empty folder with `-I`: the API, `LinkError`, pickling,
@@ -136,11 +136,11 @@ then were killed. The table of all 56, with the test that kills each one, is in
 
 ## Gates (item 15)
 
-At a63c871 on this PC (CPython 3.13.2), each command on its own, with every fetched source,
+At 1c1f914 on this PC (CPython 3.13.2), each command on its own, with every fetched source,
 the node oracles, Rich and `OSC8LINK_E2E=1`: `ruff format --check .`, `ruff check .`,
-`mypy --strict src`, `mypy --strict src tests` and `pytest` (866 passed, none skipped,
-doctests included) all exit 0. The library code is unchanged since 63c1848; a63c871 adds
-only tests. Without the fetched files the tests that need them skip
+`mypy --strict src`, `mypy --strict src tests` and `pytest` (878 passed, none skipped,
+doctests included) all exit 0. The library code is unchanged since 63c1848; a63c871 and
+1c1f914 add only tests. Without the fetched files the tests that need them skip
 cleanly, as in a fresh clone.
 
 ## QA lenses (item 19)
@@ -166,7 +166,8 @@ reporting only to the maintainer. Every finding, its fix and its contract are in
 | e | 2 | d444d16 | FAIL | e-G1 to e-G4, missing contracts on correct code; contracts in 89b1a0c |
 | e | 3 | 81ba3fa | FAIL | e-H1, e-H2 (survivors M31, M07 in the let-go branch), M22 equivalent; contracts in 63c1848 |
 | e | 4 | dbb91d6 | FAIL | e-F1 to e-F6 (survivors S16, D22, L14, D15, G08, E07, E08, E02), B02 equivalent; contracts in a63c871 |
-| e | 5 | | pending | |
+| e | 5 | 0fbe619 | FAIL | round 4 findings confirmed fixed; e-N1 to e-N3 (survivors Q03, Q07, Q10 of 10 probes); contracts in 1c1f914 |
+| e | 6 | | pending | |
 
 ## Independent review (item 16)
 
