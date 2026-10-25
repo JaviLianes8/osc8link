@@ -150,6 +150,16 @@ with 897 passed, none skipped. At 8b0765c (QA round 9: `TypeError` for an `env` 
 not a `Mapping`, docs and new contracts; no other change to detection or building) the
 same five commands exit 0 with 906 tests collected.
 
+Final gates on a fresh clone of `release/1.0.0` from GitHub at e216df2 (the report change
+above 448e781, no source change), CPython 3.13.2, without the fetched files:
+`ruff format --check .`, `ruff check .`, `mypy --strict src`, `mypy --strict src tests`
+and `pytest` (628 passed, 278 skipped: the tests that need the fetched files
+or `OSC8LINK_E2E=1`) each exit 0. `python -m build` gives the sdist and the wheel and
+`twine check --strict` PASSED for both. The wheel installed in a fresh venv (with pytest,
+pytest-timeout, Rich and mypy) and the sdist's own tests run against it with `src`
+removed and `-I`: 617 passed, 278 skipped; the doctests of the installed package, 11
+passed.
+
 ## QA lenses (item 19)
 
 Five independent lenses, each reading the certification rules, running the code and
