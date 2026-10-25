@@ -204,3 +204,33 @@ none skipped) each exit 0.
 ### Disputed findings
 
 None.
+
+## Round 7 (reviewed at df003da)
+
+Lens a confirmed A1 to A4 fixed (about 40 probes: mypy on 17 stream types, also with
+`--python-version 3.10`, `get_type_hints` on CPython 3.10 to 3.14, every README and GUIDE
+block) and reported two new findings. Lens e ran a fresh blind mutation round and reported
+three survivors on correct code. All five are fixed; none is disputed.
+
+| Finding | Fix | Contract |
+| --- | --- | --- |
+| N1 `SupportsIsatty` declared but private | `SupportsIsatty` is public: in `__all__`, importable from `osc8link`, `__module__` is `osc8link`, a docstring with a runnable example, a README API row and paragraph, the GUIDE detection rule and a CHANGELOG line; the API is now eleven names | test_contract: `__all__` and the package surface include it, `get_type_hints` of `stream` in both functions resolves to `osc8link.SupportsIsatty \| None`, its module is `osc8link`, its example runs; test_typing::test_the_stream_protocol_is_public: a wrapper annotated with it from `osc8link` passes `mypy --strict` |
+| N2 "whatever it raises" | GUIDE rule 3 and the CHANGELOG say an `isatty` that raises an exception (any `Exception` subclass); `KeyboardInterrupt` and `SystemExit` still propagate, as before | docs only |
+| F1-Q14 `auto_link` platform untested | contracts only | test_auto_link::test_the_platform_is_taken_from_sys_platform: with `sys.platform` patched to `win32` the same tty and `TERM_PROGRAM=ghostty` give `A (https://a.test)`, with `linux` the link |
+| F2-Q11 `isatty` answer whose truth test raises | contracts only | test_errors::test_detection_says_no_whatever_a_broken_isatty_raises: a third stream whose `isatty()` returns an object whose `__bool__` raises `ValueError` says False |
+| F3-Q03 `isatty` return type unpinned | the contract is `-> bool` (narrow now, widening later breaks nobody); the docstring, README, GUIDE and CHANGELOG say the type is a `bool` and that at run time any other answer is read by its truth value | test_typing::test_isatty_is_typed_to_return_a_bool: a class whose `isatty` returns `int` is rejected with `[arg-type]`; test_contract: `get_type_hints(SupportsIsatty.isatty)` is `{"return": bool}` |
+
+The N1 contracts fail on df003da (six contract tests and the typing test) and pass after
+the fix. Each lens e survivor applied alone to a copy of the fixed tree fails its new
+contract: Q14 (`platform="linux"` passed by `auto_link`) the `win32` case, Q11 (`bool()`
+moved after the `try`) the new stream with `ValueError`, Q03 (`-> object`) the typing and
+the contract test; the unmutated tree passes them.
+
+Fix commit: 128a6ee. At that commit on this PC, with every fetched source, the node
+oracles, Rich and `OSC8LINK_E2E=1`: `ruff format --check .`, `ruff check .`,
+`mypy --strict src`, `mypy --strict src tests` and `pytest` (CPython 3.13.2, 893 passed, none skipped)
+each exit 0.
+
+### Disputed findings
+
+None.

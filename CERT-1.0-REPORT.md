@@ -23,9 +23,9 @@ Progress:
 
 | # | Item | Result |
 | --- | --- | --- |
-| 1 | Public API reviewed for stability | PASS: ten names, signatures, parameter kinds and defaults pinned by `tests/test_contract.py`; every change in the CHANGELOG and the GUIDE |
+| 1 | Public API reviewed for stability | PASS: eleven names, signatures, parameter kinds and defaults pinned by `tests/test_contract.py`; every change in the CHANGELOG and the GUIDE |
 | 2 | `__all__` exact, no private imports in docs | PASS: no other public attribute (the stray `annotations` is gone) |
-| 3 | Docstrings with runnable examples, doctests | PASS: every public name, 27 doctest lines run by `--doctest-modules` and by the contract test; README (14 outputs) and GUIDE (4) examples run as tests |
+| 3 | Docstrings with runnable examples, doctests | PASS: every public name, 31 doctest lines run by `--doctest-modules` and by the contract test; README (14 outputs) and GUIDE (4) examples run as tests |
 | 4 | Typed end to end | PASS: `mypy --strict src tests`, `py.typed`, revealed types and misuse checked from a consumer snippet |
 | 5 | Typed, documented, bounded errors | PASS: `LinkError` (a `ValueError`) and `TypeError` naming the argument; messages quote at most 40 characters, tested with 1 MB inputs |
 | 6 | Contract tests of every public name | PASS |
@@ -142,7 +142,9 @@ the node oracles, Rich and `OSC8LINK_E2E=1`: `ruff format --check .`, `ruff chec
 doctests included) all exit 0. Without the fetched files the tests that need them skip
 cleanly, as in a fresh clone. At 4d8028e (QA round 6: the `stream` annotation, docs and
 new contracts; no run-time change since 63c1848) the same five commands exit 0 with 886
-passed, none skipped.
+passed, none skipped. At 128a6ee (QA round 7: `SupportsIsatty` exported, docs and new
+contracts; no run-time change to detection or building) the same five commands exit 0
+with 893 passed, none skipped.
 
 ## QA lenses (item 19)
 
@@ -170,8 +172,10 @@ reporting only to the maintainer. Every finding, its fix and its contract are in
 | e | 5 | 0fbe619 | FAIL | round 4 findings confirmed fixed; e-N1 to e-N3 (survivors Q03, Q07, Q10 of 10 probes); contracts in 1c1f914 |
 | a | 3 | d9def39 | FAIL | A1 to A3 (README wording), A4 (`stream` typed narrower than the runtime accepts); fixed in 4d8028e |
 | e | 6 | d9def39 | FAIL | F1-D34, F2-D32, F3-L30 (survivors on correct code: default platform, truthy `isatty`, CR in `list`); contracts in 4d8028e |
-| a | 4 | | pending | |
-| e | 7 | | pending | |
+| a | 4 | df003da | FAIL | A1 to A4 confirmed fixed; N1 (`SupportsIsatty` not public), N2 (two sentences overclaim what `isatty` errors are caught); fixed in 128a6ee |
+| e | 7 | df003da | FAIL | F1-Q14, F2-Q11, F3-Q03 (survivors on correct code: `auto_link` platform, an `isatty` answer without a truth value, the `isatty` return type); contracts in 128a6ee |
+| a | 5 | | pending | |
+| e | 8 | | pending | |
 
 ## Independent review (item 16)
 
