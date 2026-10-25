@@ -144,7 +144,9 @@ cleanly, as in a fresh clone. At 4d8028e (QA round 6: the `stream` annotation, d
 new contracts; no run-time change since 63c1848) the same five commands exit 0 with 886
 passed, none skipped. At 128a6ee (QA round 7: `SupportsIsatty` exported, docs and new
 contracts; no run-time change to detection or building) the same five commands exit 0
-with 893 passed, none skipped.
+with 893 passed, none skipped. At bf47e23 (QA round 8: `inspect` on `SupportsIsatty` and
+two new contracts; no change to detection or building) the same five commands exit 0
+with 897 passed, none skipped.
 
 ## QA lenses (item 19)
 
@@ -174,8 +176,10 @@ reporting only to the maintainer. Every finding, its fix and its contract are in
 | e | 6 | d9def39 | FAIL | F1-D34, F2-D32, F3-L30 (survivors on correct code: default platform, truthy `isatty`, CR in `list`); contracts in 4d8028e |
 | a | 4 | df003da | FAIL | A1 to A4 confirmed fixed; N1 (`SupportsIsatty` not public), N2 (two sentences overclaim what `isatty` errors are caught); fixed in 128a6ee |
 | e | 7 | df003da | FAIL | F1-Q14, F2-Q11, F3-Q03 (survivors on correct code: `auto_link` platform, an `isatty` answer without a truth value, the `isatty` return type); contracts in 128a6ee |
-| a | 5 | | pending | |
-| e | 8 | | pending | |
+| a | 5 | 0d289ee | FAIL | N1 and N2 confirmed fixed; N3 (`inspect.getsource` of `SupportsIsatty` shows a line of `__init__.py` on Python 3.13+); fixed in bf47e23 |
+| e | 8 | 0d289ee | FAIL | round 7 findings confirmed fixed; N1-S14, N2-S18-S21 (survivors on correct code: an interrupt inside `isatty`, a falsy stream); contracts in bf47e23 |
+| a | 6 | | pending | |
+| e | 9 | | pending | |
 
 ## Independent review (item 16)
 

@@ -234,3 +234,32 @@ each exit 0.
 ### Disputed findings
 
 None.
+
+## Round 8 (reviewed at 0d289ee)
+
+Lens a confirmed the earlier findings fixed (about 35 probes on CPython 3.10 to 3.14) and
+reported one new finding. Lens e reran its round 7 survivors (all killed) and reported two
+new survivors on correct code. All three are fixed; none is disputed.
+
+| Finding | Fix | Contract |
+| --- | --- | --- |
+| N3 `inspect.getsource(SupportsIsatty)` shows a wrong line | `__module__` stays `osc8link` (pickles and the contract need it) and `__firstlineno__` is removed from the protocol when present, so Python 3.13+ no longer pairs `__init__.py` with the line of the class in `_detect.py`; `inspect` raises `OSError` on every version, as for `Link` and `LinkError`; CHANGELOG line | test_contract::test_the_source_of_a_public_class_is_its_own_or_none: `inspect.getsource` of `Link`, `LinkError` and `SupportsIsatty` raises `OSError` or returns text starting with `class <Name>` |
+| N1-S14 an interrupt inside `isatty` | contracts only | test_detect_defaults::test_an_interrupt_inside_isatty_is_not_swallowed: `KeyboardInterrupt` and `SystemExit` raised by `isatty` propagate out of `supports_hyperlinks` |
+| N2-S18-S21 a falsy stream | contracts only | test_detect_defaults::test_a_falsy_stream_is_used_not_replaced_by_stdout: a tty stream whose `__len__` is 0, with `sys.stdout` not a tty and `TERM_PROGRAM=ghostty`, gives `supports_hyperlinks` True and `auto_link` the link |
+
+The N3 contract fails on 0d289ee under CPython 3.13.2 (the source comes back as a line of
+`__all__`) and passes after the fix; a probe on CPython 3.10.19, 3.11.5, 3.12.12, 3.13.2
+and 3.14.2 shows `OSError` for all three public classes and `osc8link` as their module. Each
+lens e survivor applied alone to the fixed tree fails its new contract: S14
+(`except BaseException:`) both interrupt cases, S21 (`_isatty(stream or sys.stdout)`) and
+S18 (`supports_hyperlinks(stream or sys.stdout)` in `auto_link`) the falsy stream test; the
+unmutated tree passes them.
+
+Fix commit: bf47e23. At that commit on this PC, with every fetched source, the node
+oracles, Rich and `OSC8LINK_E2E=1`: `ruff format --check .`, `ruff check .`,
+`mypy --strict src`, `mypy --strict src tests` and `pytest` (CPython 3.13.2, 897 passed,
+none skipped) each exit 0.
+
+### Disputed findings
+
+None.
